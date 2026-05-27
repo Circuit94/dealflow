@@ -235,6 +235,18 @@ export function getLatestBrief(): BriefRow | undefined {
   `).get() as BriefRow | undefined;
 }
 
+export function getBriefById(id: number): BriefRow | undefined {
+  return getDB().prepare(`
+    SELECT * FROM daily_briefs WHERE id = ?
+  `).get(id) as BriefRow | undefined;
+}
+
+export function listBriefs(limit = 30): { id: number; deal_count: number; top_score: number; generated_at: string }[] {
+  return getDB().prepare(`
+    SELECT id, deal_count, top_score, generated_at FROM daily_briefs ORDER BY generated_at DESC LIMIT ?
+  `).all(limit) as { id: number; deal_count: number; top_score: number; generated_at: string }[];
+}
+
 // ============ Deal Feedback (飞轮入口) ============
 export function saveFeedback(dealId: string, signal: 'interested' | 'pass'): void {
   // 先删除旧反馈（同一个 deal 只保留最新一条）
@@ -242,6 +254,10 @@ export function saveFeedback(dealId: string, signal: 'interested' | 'pass'): voi
   getDB().prepare(`
     INSERT INTO deal_feedback (deal_id, signal) VALUES (?, ?)
   `).run(dealId, signal);
+}
+
+export function deleteFeedback(dealId: string): void {
+  getDB().prepare('DELETE FROM deal_feedback WHERE deal_id = ?').run(dealId);
 }
 
 export function getFeedback(dealId: string): FeedbackRow | undefined {

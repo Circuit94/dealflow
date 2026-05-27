@@ -1,6 +1,6 @@
 /**
  * /api/brief - 每日 Deal Brief 生成
- * GET: 获取最新 brief
+ * GET: 获取最新 brief（?id=N 获取指定 brief，?list=true 获取历史列表）
  * POST: 生成新的 daily brief
  */
 
@@ -8,10 +8,46 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { generateDailyBrief, ScoredDeal } from '@/lib/deepseek';
-import { getPreferences, getRecentDeals, saveBrief, getLatestBrief } from '@/lib/db';
+import { getPreferences, getRecentDeals, saveBrief, getLatestBrief, getBriefById, listBriefs } from '@/lib/db';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    // List all briefs (metadata only)
+    if (searchParams.get('list') === 'true') {
+      const briefs = listBriefs(30);
+      return NextResponse.json({
+        success: true,
+        briefs: briefs.map(b => ({
+          id: b.id,
+          dealCount: b.deal_count,
+          topScore: b.top_score,
+          generatedAt: b.generated_at,
+        })),
+      });
+    }
+
+    // Get specific brief by ID
+    const idParam = searchParams.get('id');
+    if (idParam) {
+      const brief = getBriefById(Number(idParam));
+      if (!brief) {
+        return NextResponse.json({ success: false, error: 'Brief not found' }, { status: 404 });
+      }
+      return NextResponse.json({
+        success: true,
+        brief: {
+          id: brief.id,
+          content: brief.content,
+          dealCount: brief.deal_count,
+          topScore: brief.top_score,
+          generatedAt: brief.generated_at,
+        },
+      });
+    }
+
+    // Default: get latest brief
     const brief = getLatestBrief();
     if (!brief) {
       return NextResponse.json({
@@ -24,6 +60,7 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       brief: {
+        id: brief.id,
         content: brief.content,
         dealCount: brief.deal_count,
         topScore: brief.top_score,
@@ -49,7 +86,6 @@ export async function POST() {
       );
     }
 
-    // Get recently scored deals
     const recentDeals = getRecentDeals(20);
     
     if (recentDeals.length === 0) {
@@ -59,7 +95,6 @@ export async function POST() {
       );
     }
 
-    // Convert to ScoredDeal format
     const scoredDeals: ScoredDeal[] = recentDeals
       .filter(d => d.score !== null)
       .map(d => ({
@@ -84,11 +119,9 @@ export async function POST() {
         },
       }));
 
-    // Generate brief via DeepSeek
     const briefContent = await generateDailyBrief(scoredDeals, preferences);
     const topScore = Math.max(...scoredDeals.map(d => d.score.score));
 
-    // Persist
     saveBrief(briefContent, scoredDeals.length, topScore);
 
     return NextResponse.json({

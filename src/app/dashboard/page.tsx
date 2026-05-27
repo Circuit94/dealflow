@@ -1,7 +1,25 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { Suspense, useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { DealCard } from '@/components/DealCard';
+import { BriefSection } from '@/components/BriefSection';
+import { FilterBar } from '@/components/FilterBar';
+import { OnboardingStepper } from '@/components/OnboardingStepper';
+import { PreferencesForm } from '@/components/PreferencesForm';
+import { ApiConfigForm } from '@/components/ApiConfigForm';
+import { SkeletonCard, SkeletonBrief } from '@/components/Skeleton';
 
+// Wrap in Suspense for useSearchParams
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><span className="text-gray-400">加载中...</span></div>}>
+      <Dashboard />
+    </Suspense>
+  );
+}
+
+// ============ Types ============
 interface Deal {
   id: string;
   name: string;
@@ -21,7 +39,15 @@ interface Deal {
 type FeedbackSignal = 'interested' | 'pass' | null;
 
 interface Brief {
+  id?: number;
   content: string;
+  dealCount: number;
+  topScore: number;
+  generatedAt: string;
+}
+
+interface BriefMeta {
+  id: number;
   dealCount: number;
   topScore: number;
   generatedAt: string;
@@ -41,464 +67,93 @@ interface ApiConfig {
   deepseekModel: string;
 }
 
-// ============ Skeleton Components ============
-function SkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
-      <div className="flex items-start justify-between">
-        <div className="flex-1 space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="h-4 w-20 bg-gray-200 rounded" />
-            <div className="h-5 w-40 bg-gray-200 rounded" />
-            <div className="h-5 w-16 bg-gray-200 rounded-full" />
-          </div>
-          <div className="h-4 w-3/4 bg-gray-200 rounded" />
-          <div className="h-8 w-full bg-gray-100 rounded-lg" />
-          <div className="flex gap-2">
-            <div className="h-5 w-16 bg-gray-100 rounded" />
-            <div className="h-5 w-24 bg-gray-100 rounded" />
-          </div>
-        </div>
-        <div className="ml-6 flex flex-col items-center gap-2">
-          <div className="w-14 h-14 bg-gray-200 rounded-full" />
-          <div className="h-3 w-8 bg-gray-100 rounded" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SkeletonBrief() {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-8 animate-pulse">
-      <div className="flex items-center justify-between mb-6">
-        <div className="h-6 w-32 bg-gray-200 rounded" />
-        <div className="flex gap-4">
-          <div className="h-4 w-24 bg-gray-100 rounded" />
-          <div className="h-4 w-20 bg-gray-100 rounded" />
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div className="h-4 w-full bg-gray-100 rounded" />
-        <div className="h-4 w-5/6 bg-gray-100 rounded" />
-        <div className="h-4 w-4/6 bg-gray-100 rounded" />
-        <div className="h-4 w-full bg-gray-100 rounded" />
-        <div className="h-4 w-3/4 bg-gray-100 rounded" />
-      </div>
-    </div>
-  );
-}
-
-// ============ Onboarding Stepper ============
-function OnboardingStepper({
-  apiConfigured,
-  hasPreferences,
-  hasDeals,
-  onGoToApi,
-  onGoToPrefs,
-  onRunScan,
-  loading,
-}: {
-  apiConfigured: boolean;
-  hasPreferences: boolean;
-  hasDeals: boolean;
-  onGoToApi: () => void;
-  onGoToPrefs: () => void;
-  onRunScan: () => void;
-  loading: boolean;
-}) {
-  const steps = [
-    {
-      label: '配置 API Key',
-      description: '连接 DeepSeek 以启用 AI 评分',
-      done: apiConfigured,
-      action: onGoToApi,
-      actionLabel: '前往配置',
-    },
-    {
-      label: '设置投资偏好',
-      description: '告诉 AI 你关注什么赛道和阶段',
-      done: hasPreferences,
-      action: onGoToPrefs,
-      actionLabel: '设置偏好',
-    },
-    {
-      label: '执行首次扫描',
-      description: '从 Product Hunt、GitHub 抓取并评分项目',
-      done: hasDeals,
-      action: onRunScan,
-      actionLabel: loading ? '扫描中...' : '开始扫描',
-    },
-  ];
-
-  // Find current step
-  const currentStep = steps.findIndex(s => !s.done);
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 p-8">
-      <div className="text-center mb-8">
-        <div className="text-4xl mb-3">🚀</div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">欢迎使用 DealFlow</h2>
-        <p className="text-gray-500">完成以下 3 步，开始你的 AI 投资助手之旅</p>
-      </div>
-
-      <div className="max-w-md mx-auto space-y-4">
-        {steps.map((step, i) => (
-          <div
-            key={i}
-            className={`flex items-start gap-4 p-4 rounded-lg border transition-all ${
-              step.done
-                ? 'bg-green-50 border-green-200'
-                : i === currentStep
-                ? 'bg-indigo-50 border-indigo-200'
-                : 'bg-gray-50 border-gray-200 opacity-60'
-            }`}
-          >
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
-              step.done
-                ? 'bg-green-500 text-white'
-                : i === currentStep
-                ? 'bg-indigo-500 text-white'
-                : 'bg-gray-300 text-white'
-            }`}>
-              {step.done ? '✓' : i + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium text-gray-900 text-sm">{step.label}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{step.description}</div>
-            </div>
-            {i === currentStep && !step.done && (
-              <button
-                onClick={step.action}
-                disabled={loading}
-                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0"
-              >
-                {step.actionLabel}
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ============ Deal Card with Accordion ============
-function DealCard({
-  deal,
-  feedback,
-  onFeedback,
-}: {
-  deal: Deal;
-  feedback: FeedbackSignal;
-  onFeedback: (signal: 'interested' | 'pass') => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
-      {/* Main row — always visible */}
-      <div className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <span className="text-sm text-gray-400">{getSourceLabel(deal.source)}</span>
-              <a href={deal.url} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors truncate">
-                {deal.name}
-              </a>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${getVerdictColor(deal.verdict)}`}>
-                {getVerdictLabel(deal.verdict)}
-              </span>
-            </div>
-            <p className="text-gray-600 mb-2 line-clamp-2">{deal.tagline}</p>
-            {deal.one_liner && (
-              <p className="text-sm text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg mb-3">
-                💡 {deal.one_liner}
-              </p>
-            )}
-            <div className="flex items-center gap-4 text-xs text-gray-400">
-              <span className="bg-gray-100 px-2 py-1 rounded">{deal.category}</span>
-              {deal.metrics && <span>{deal.metrics}</span>}
-              {/* Expand toggle */}
-              {(deal.strengths?.length > 0 || deal.risks?.length > 0 || deal.suggested_action) && (
-                <button
-                  onClick={() => setExpanded(!expanded)}
-                  className="text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
-                >
-                  {expanded ? '收起详情 ▲' : '展开详情 ▼'}
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="ml-6 flex flex-col items-center gap-2 shrink-0">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold ${
-              deal.score >= 80 ? 'bg-green-100 text-green-700' :
-              deal.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
-              'bg-gray-100 text-gray-500'
-            }`}>
-              {deal.score || '—'}
-            </div>
-            <span className="text-xs text-gray-400 block">评分</span>
-            {/* Feedback buttons */}
-            <div className="flex gap-1 mt-1">
-              <button
-                onClick={() => onFeedback('interested')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
-                  feedback === 'interested'
-                    ? 'bg-green-100 text-green-600 ring-2 ring-green-300'
-                    : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-600'
-                }`}
-                title="感兴趣"
-              >
-                👍
-              </button>
-              <button
-                onClick={() => onFeedback('pass')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
-                  feedback === 'pass'
-                    ? 'bg-red-100 text-red-600 ring-2 ring-red-300'
-                    : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600'
-                }`}
-                title="跳过"
-              >
-                👎
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Accordion detail panel */}
-      {expanded && (
-        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50 rounded-b-xl">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Strengths */}
-            {deal.strengths?.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">✅ 优势</h4>
-                <ul className="space-y-1">
-                  {deal.strengths.map((s, i) => (
-                    <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
-                      <span className="text-green-500 mt-0.5 shrink-0">•</span>
-                      <span>{s}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {/* Risks */}
-            {deal.risks?.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">⚠️ 风险</h4>
-                <ul className="space-y-1">
-                  {deal.risks.map((r, i) => (
-                    <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
-                      <span className="text-red-500 mt-0.5 shrink-0">•</span>
-                      <span>{r}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {/* Suggested Action */}
-            {deal.suggested_action && (
-              <div>
-                <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">🎯 建议动作</h4>
-                <p className="text-sm text-gray-700">{deal.suggested_action}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============ Helper Functions ============
-function getVerdictLabel(verdict: string) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return '强匹配';
-    case 'MODERATE_MATCH': return '中等匹配';
-    case 'WEAK_MATCH': return '弱匹配';
-    case 'PASS': return '不匹配';
-    default: return verdict;
-  }
-}
-
-function getVerdictColor(verdict: string) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return 'bg-green-100 text-green-800 border-green-200';
-    case 'MODERATE_MATCH': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'WEAK_MATCH': return 'bg-gray-100 text-gray-600 border-gray-200';
-    default: return 'bg-red-50 text-red-600 border-red-200';
-  }
-}
-
-function getSourceLabel(source: string) {
-  switch (source) {
-    case 'product_hunt': return '🚀 PH';
-    case 'github': return '⭐ GH';
-    case 'crunchbase': return '💰 CB';
-    case 'twitter': return '🐦 X';
-    default: return '📄';
-  }
-}
-
-// ============ Brief Section Renderer ============
-function BriefSection({ content }: { content: string }) {
-  // Parse brief into sections by ## headings or numbered items
-  const sections = parseBriefSections(content);
-
-  if (sections.length === 0) {
-    return (
-      <div
-        className="prose prose-sm max-w-none text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_hr]:my-4 [&_hr]:border-gray-200"
-        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {sections.map((section, i) => (
-        <div key={i} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-          {section.title && (
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">{section.title}</h3>
-          )}
-          <div
-            className="text-sm text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(section.body) }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function parseBriefSections(content: string): { title: string; body: string }[] {
-  const lines = content.split('\n');
-  const sections: { title: string; body: string }[] = [];
-  let currentTitle = '';
-  let currentBody: string[] = [];
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(.+)$/);
-    const numberedMatch = line.match(/^(\d+)\.\s+\*\*(.+?)\*\*(.*)$/);
-
-    if (headingMatch) {
-      if (currentTitle || currentBody.length > 0) {
-        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
-      }
-      currentTitle = headingMatch[1];
-      currentBody = [];
-    } else if (numberedMatch && currentBody.length === 0 && !currentTitle) {
-      // Top-level numbered item as its own section
-      if (sections.length > 0 || currentBody.length > 0) {
-        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
-        currentBody = [];
-      }
-      currentTitle = `${numberedMatch[1]}. ${numberedMatch[2]}`;
-      currentBody = numberedMatch[3] ? [numberedMatch[3].trim()] : [];
-    } else if (line.match(/^---$/)) {
-      if (currentTitle || currentBody.length > 0) {
-        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
-      }
-      currentTitle = '';
-      currentBody = [];
-    } else {
-      currentBody.push(line);
-    }
-  }
-
-  if (currentTitle || currentBody.length > 0) {
-    sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
-  }
-
-  // Filter out empty sections
-  return sections.filter(s => s.title || s.body.trim());
-}
-
-function renderMarkdown(text: string): string {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-    .replace(/^---$/gm, '<hr class="my-4 border-gray-200" />')
-    .replace(/^## (.+)$/gm, '<h3 class="text-base font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
-    .replace(/^(\d+)\. (.+)$/gm, '<div class="mt-2"><span class="font-medium text-gray-900">$1. $2</span></div>')
-    .replace(/\n/g, '<br />');
-}
+type TabKey = 'brief' | 'deals' | 'settings' | 'api';
 
 // ============ Main Dashboard ============
-export default function Dashboard() {
+function Dashboard() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // URL-synced tab state
+  const tabFromUrl = (searchParams.get('tab') as TabKey) || 'brief';
+  const [activeTab, setActiveTabState] = useState<TabKey>(tabFromUrl);
+
+  function setActiveTab(tab: TabKey) {
+    setActiveTabState(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }
+
+  // Sync from URL on popstate/back
+  useEffect(() => {
+    const tab = (searchParams.get('tab') as TabKey) || 'brief';
+    setActiveTabState(tab);
+  }, [searchParams]);
+
+  // Core state
   const [deals, setDeals] = useState<Deal[]>([]);
   const [brief, setBrief] = useState<Brief | null>(null);
+  const [briefHistory, setBriefHistory] = useState<BriefMeta[]>([]);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [apiConfig, setApiConfig] = useState<ApiConfig | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState<string>('');
   const [scanError, setScanError] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'brief' | 'deals' | 'settings' | 'api'>('brief');
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackSignal>>({});
 
-  // Filtering
+  // Filtering & sorting
   const [verdictFilter, setVerdictFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<string>('score_desc');
 
-  // 偏好编辑表单
-  const [editSectors, setEditSectors] = useState('');
-  const [editStage, setEditStage] = useState('');
-  const [editGeo, setEditGeo] = useState('');
-  const [editSignals, setEditSignals] = useState('');
-  const [prefsSaving, setPrefsSaving] = useState(false);
-  const [prefsMsg, setPrefsMsg] = useState('');
+  // Brief → Deal linking
+  const [highlightedDealId, setHighlightedDealId] = useState<string | null>(null);
 
-  // API 配置表单
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [baseUrlInput, setBaseUrlInput] = useState('https://api.deepseek.com');
-  const [modelInput, setModelInput] = useState('deepseek-chat');
-  const [configSaving, setConfigSaving] = useState(false);
-  const [configMsg, setConfigMsg] = useState('');
+  // History brief selector
+  const [showHistory, setShowHistory] = useState(false);
 
+  // ============ Data Fetching (with error isolation) ============
   const fetchData = useCallback(async () => {
-    try {
-      const [dealsRes, briefRes, prefsRes, configRes, feedbackRes] = await Promise.all([
-        fetch('/api/deals').then(r => r.json()),
-        fetch('/api/brief').then(r => r.json()),
-        fetch('/api/preferences').then(r => r.json()),
-        fetch('/api/config').then(r => r.json()),
-        fetch('/api/feedback').then(r => r.json()),
-      ]);
-      if (dealsRes.success) setDeals(dealsRes.deals || []);
-      if (briefRes.success) setBrief(briefRes.brief);
-      if (prefsRes.success) {
-        setPreferences(prefsRes.preferences);
-        const p = prefsRes.preferences;
-        setEditSectors(p.sectors?.join(', ') || '');
-        setEditStage(p.stage || '');
-        setEditGeo(p.geography || '');
-        setEditSignals(p.signals?.join(', ') || '');
-      }
-      if (configRes.success) {
-        setApiConfig(configRes.config);
-        setBaseUrlInput(configRes.config.deepseekBaseUrl);
-        setModelInput(configRes.config.deepseekModel);
-      }
-      if (feedbackRes.success && feedbackRes.feedbackMap) {
-        setFeedbackMap(feedbackRes.feedbackMap);
-      }
-    } catch (e) {
-      console.error('数据加载失败:', e);
-    } finally {
-      setInitialLoading(false);
+    const results = await Promise.allSettled([
+      fetch('/api/deals').then(r => r.json()),
+      fetch('/api/brief').then(r => r.json()),
+      fetch('/api/preferences').then(r => r.json()),
+      fetch('/api/config').then(r => r.json()),
+      fetch('/api/feedback').then(r => r.json()),
+      fetch('/api/brief?list=true').then(r => r.json()),
+    ]);
+
+    const [dealsRes, briefRes, prefsRes, configRes, feedbackRes, historyRes] = results;
+
+    if (dealsRes.status === 'fulfilled' && dealsRes.value.success) {
+      setDeals(dealsRes.value.deals || []);
     }
+    if (briefRes.status === 'fulfilled' && briefRes.value.success) {
+      setBrief(briefRes.value.brief);
+    }
+    if (prefsRes.status === 'fulfilled' && prefsRes.value.success) {
+      setPreferences(prefsRes.value.preferences);
+    }
+    if (configRes.status === 'fulfilled' && configRes.value.success) {
+      setApiConfig(configRes.value.config);
+    }
+    if (feedbackRes.status === 'fulfilled' && feedbackRes.value.success && feedbackRes.value.feedbackMap) {
+      setFeedbackMap(feedbackRes.value.feedbackMap);
+    }
+    if (historyRes.status === 'fulfilled' && historyRes.value.success) {
+      setBriefHistory(historyRes.value.briefs || []);
+    }
+
+    setInitialLoading(false);
   }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Determine if onboarding should show
+  // ============ Actions ============
   const showOnboarding = !initialLoading && (!apiConfig?.deepseekConfigured || deals.length === 0);
 
   async function runScan() {
@@ -509,26 +164,19 @@ export default function Dashboard() {
     }
 
     setLoading(true);
-    setScanStatus('正在抓取数据源...');
+    setScanStatus('正在从 Product Hunt、GitHub 抓取项目...');
     setScanError('');
 
     try {
-      setScanStatus('正在从 Product Hunt、GitHub 抓取项目...');
       const dealsRes = await fetch('/api/deals', { method: 'POST' });
       const dealsData = await dealsRes.json();
-
-      if (!dealsData.success) {
-        throw new Error(dealsData.error || '抓取失败');
-      }
+      if (!dealsData.success) throw new Error(dealsData.error || '抓取失败');
 
       setScanStatus(`已评分 ${dealsData.total} 个项目，正在生成 Brief...`);
 
       const briefRes = await fetch('/api/brief', { method: 'POST' });
       const briefData = await briefRes.json();
-
-      if (!briefData.success) {
-        throw new Error(briefData.error || 'Brief 生成失败');
-      }
+      if (!briefData.success) throw new Error(briefData.error || 'Brief 生成失败');
 
       setScanStatus('');
       await fetchData();
@@ -536,71 +184,16 @@ export default function Dashboard() {
       track('scan_completed', { dealCount: dealsData.total });
     } catch (e) {
       const msg = e instanceof Error ? e.message : '未知错误';
-      setScanError(`扫描失败：${msg}`);
+      setScanError(msg);
       setScanStatus('');
     }
     setLoading(false);
   }
 
-  async function saveApiConfig() {
-    setConfigSaving(true);
-    setConfigMsg('');
-    try {
-      const res = await fetch('/api/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          deepseekApiKey: apiKeyInput || undefined,
-          deepseekBaseUrl: baseUrlInput || undefined,
-          deepseekModel: modelInput || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setApiConfig(data.config);
-        setConfigMsg('配置保存成功！');
-        setApiKeyInput('');
-      } else {
-        setConfigMsg(`保存失败：${data.error}`);
-      }
-    } catch {
-      setConfigMsg('保存失败，请检查网络');
-    }
-    setConfigSaving(false);
-  }
-
-  async function savePreferences() {
-    setPrefsSaving(true);
-    setPrefsMsg('');
-    try {
-      const payload = {
-        sectors: editSectors.split(',').map(s => s.trim()).filter(Boolean),
-        stage: editStage.trim(),
-        geography: editGeo.trim(),
-        signals: editSignals.split(',').map(s => s.trim()).filter(Boolean),
-      };
-      const res = await fetch('/api/preferences', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPreferences(data.preferences);
-        setPrefsMsg('偏好已保存！下次扫描将使用新设置。');
-        track('preferences_updated', payload);
-      } else {
-        setPrefsMsg(`保存失败：${data.error}`);
-      }
-    } catch {
-      setPrefsMsg('保存失败，请检查网络');
-    }
-    setPrefsSaving(false);
-  }
-
-  async function sendFeedback(dealId: string, signal: 'interested' | 'pass') {
+  async function sendFeedback(dealId: string, signal: 'interested' | 'pass' | null) {
+    const prev = feedbackMap[dealId] || null;
     // Optimistic update
-    setFeedbackMap(prev => ({ ...prev, [dealId]: signal }));
+    setFeedbackMap(m => ({ ...m, [dealId]: signal }));
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -609,11 +202,10 @@ export default function Dashboard() {
       });
       const data = await res.json();
       if (!data.success) {
-        // Revert on failure
-        setFeedbackMap(prev => ({ ...prev, [dealId]: null }));
+        setFeedbackMap(m => ({ ...m, [dealId]: prev }));
       }
     } catch {
-      setFeedbackMap(prev => ({ ...prev, [dealId]: null }));
+      setFeedbackMap(m => ({ ...m, [dealId]: prev }));
     }
   }
 
@@ -625,83 +217,134 @@ export default function Dashboard() {
     }).catch(() => {});
   }
 
-  // Filtered deals
-  const filteredDeals = deals.filter(deal => {
-    if (verdictFilter !== 'all' && deal.verdict !== verdictFilter) return false;
-    if (sourceFilter !== 'all' && deal.source !== sourceFilter) return false;
-    return true;
-  });
+  // Brief → Deal jump
+  function handleDealClick(dealName: string) {
+    const deal = deals.find(d => d.name === dealName);
+    if (deal) {
+      setHighlightedDealId(deal.id);
+      setActiveTab('deals');
+      // Clear highlight after animation
+      setTimeout(() => setHighlightedDealId(null), 3000);
+    }
+  }
 
+  // Load a specific historical brief
+  async function loadBrief(id: number) {
+    try {
+      const res = await fetch(`/api/brief?id=${id}`);
+      const data = await res.json();
+      if (data.success && data.brief) {
+        setBrief(data.brief);
+        setShowHistory(false);
+      }
+    } catch { /* ignore */ }
+  }
+
+  // ============ Filtered & Sorted Deals ============
+  const filteredDeals = useMemo(() => {
+    let result = deals.filter(deal => {
+      if (verdictFilter !== 'all' && deal.verdict !== verdictFilter) return false;
+      if (sourceFilter !== 'all' && deal.source !== sourceFilter) return false;
+      return true;
+    });
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'score_asc': return (a.score || 0) - (b.score || 0);
+        case 'date_desc': return 0; // already sorted by API
+        case 'date_asc': return 0;
+        case 'score_desc':
+        default: return (b.score || 0) - (a.score || 0);
+      }
+    });
+
+    return result;
+  }, [deals, verdictFilter, sourceFilter, sortBy]);
+
+  const dealNames = useMemo(() => deals.map(d => d.name), [deals]);
+
+  // ============ Render ============
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">D</span>
             </div>
-            <h1 className="text-xl font-semibold text-gray-900">DealFlow</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">DealFlow</h1>
             {apiConfig?.deepseekConfigured && (
-              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium">已连接</span>
+              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">已连接</span>
             )}
             {apiConfig && !apiConfig.deepseekConfigured && (
-              <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium">未配置</span>
+              <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">未配置</span>
             )}
           </div>
           <button
             onClick={runScan}
             disabled={loading}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? '⏳ 扫描中...' : '🔍 执行每日扫描'}
+            {loading ? '⏳ 扫描中...' : '🔍 每日扫描'}
           </button>
         </div>
       </header>
 
       {/* Status Bar */}
       {(scanStatus || scanError) && (
-        <div className="max-w-6xl mx-auto px-6 pt-4">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4">
           {scanStatus && (
             <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
               <span className="animate-spin">⏳</span> {scanStatus}
             </div>
           )}
           {scanError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              ❌ {scanError}
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between">
+              <span>❌ 扫描失败：{scanError}</span>
+              <button
+                onClick={runScan}
+                disabled={loading}
+                className="ml-3 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-xs font-medium transition-colors shrink-0"
+              >
+                重试
+              </button>
             </div>
           )}
         </div>
       )}
 
       {/* Tabs */}
-      <div className="max-w-6xl mx-auto px-6 pt-6">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit overflow-x-auto">
           {([
-            { key: 'brief' as const, label: '📋 每日简报' },
-            { key: 'deals' as const, label: '🎯 项目管线' },
-            { key: 'settings' as const, label: '⚙️ 投资偏好' },
-            { key: 'api' as const, label: '🔑 API 配置' },
+            { key: 'brief' as const, label: '📋 简报', labelFull: '📋 每日简报' },
+            { key: 'deals' as const, label: '🎯 管线', labelFull: '🎯 项目管线' },
+            { key: 'settings' as const, label: '⚙️ 偏好', labelFull: '⚙️ 投资偏好' },
+            { key: 'api' as const, label: '🔑 API', labelFull: '🔑 API 配置' },
           ]).map(tab => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors whitespace-nowrap relative ${
                 activeTab === tab.key
-                  ? 'bg-white text-gray-900 shadow-sm'
+                  ? 'bg-white text-indigo-700 shadow-sm'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab.label}
+              <span className="sm:hidden">{tab.label}</span>
+              <span className="hidden sm:inline">{tab.labelFull}</span>
+              {activeTab === tab.key && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-indigo-500 rounded-full" />
+              )}
             </button>
           ))}
         </div>
       </div>
 
       {/* Content */}
-      <main className="max-w-6xl mx-auto px-6 py-6">
-        {/* 每日简报 */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        {/* ====== 每日简报 ====== */}
         {activeTab === 'brief' && (
           <div className="space-y-6">
             {initialLoading ? (
@@ -717,22 +360,58 @@ export default function Dashboard() {
                 loading={loading}
               />
             ) : brief ? (
-              <div className="bg-white rounded-xl border border-gray-200 p-8">
-                <div className="flex items-center justify-between mb-6">
+              <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8">
+                <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
                   <h2 className="text-lg font-semibold text-gray-900">今日投资简报</h2>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 flex-wrap">
                     <span>分析了 {brief.dealCount} 个项目</span>
                     <span>最高分：{brief.topScore}</span>
                     <span>{new Date(brief.generatedAt).toLocaleDateString('zh-CN')}</span>
+                    {briefHistory.length > 1 && (
+                      <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className="text-indigo-600 hover:text-indigo-700 font-medium"
+                      >
+                        {showHistory ? '收起历史' : '往期简报 ▾'}
+                      </button>
+                    )}
                   </div>
                 </div>
-                <BriefSection content={brief.content} />
+
+                {/* History selector */}
+                {showHistory && briefHistory.length > 1 && (
+                  <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">历史简报</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {briefHistory.map(b => (
+                        <button
+                          key={b.id}
+                          onClick={() => loadBrief(b.id)}
+                          className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
+                            brief.id === b.id
+                              ? 'bg-indigo-50 text-indigo-700 font-medium'
+                              : 'hover:bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          <span>{new Date(b.generatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
+                          <span className="text-xs text-gray-400">{b.dealCount} 项目 · 最高 {b.topScore} 分</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <BriefSection
+                  content={brief.content}
+                  dealNames={dealNames}
+                  onDealClick={handleDealClick}
+                />
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="text-4xl mb-4">📭</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">暂无简报</h3>
-                <p className="text-gray-500 mb-6">点击「执行每日扫描」生成你的第一份投资简报。</p>
+                <p className="text-gray-500 mb-6">点击「每日扫描」生成你的第一份投资简报。</p>
                 <button
                   onClick={runScan}
                   disabled={loading}
@@ -745,7 +424,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 项目管线 */}
+        {/* ====== 项目管线 ====== */}
         {activeTab === 'deals' && (
           <div className="space-y-4">
             {initialLoading ? (
@@ -756,44 +435,28 @@ export default function Dashboard() {
               </>
             ) : deals.length > 0 ? (
               <>
-                {/* Filter bar */}
-                <div className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-gray-500 font-medium">筛选：</span>
-                  <select
-                    value={verdictFilter}
-                    onChange={e => setVerdictFilter(e.target.value)}
-                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  >
-                    <option value="all">全部评级</option>
-                    <option value="STRONG_MATCH">强匹配</option>
-                    <option value="MODERATE_MATCH">中等匹配</option>
-                    <option value="WEAK_MATCH">弱匹配</option>
-                    <option value="PASS">不匹配</option>
-                  </select>
-                  <select
-                    value={sourceFilter}
-                    onChange={e => setSourceFilter(e.target.value)}
-                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  >
-                    <option value="all">全部来源</option>
-                    <option value="product_hunt">Product Hunt</option>
-                    <option value="github">GitHub</option>
-                  </select>
-                  <span className="text-xs text-gray-400 ml-auto">
-                    显示 {filteredDeals.length} / {deals.length} 个项目
-                  </span>
-                </div>
+                <FilterBar
+                  verdictFilter={verdictFilter}
+                  sourceFilter={sourceFilter}
+                  sortBy={sortBy}
+                  onVerdictChange={setVerdictFilter}
+                  onSourceChange={setSourceFilter}
+                  onSortChange={setSortBy}
+                  totalCount={deals.length}
+                  filteredCount={filteredDeals.length}
+                  onClear={() => { setVerdictFilter('all'); setSourceFilter('all'); }}
+                />
 
-                {/* Deal list */}
                 {filteredDeals.length > 0 ? (
                   filteredDeals.map(deal => (
                     <DealCard
                       key={deal.id}
                       deal={deal}
                       feedback={feedbackMap[deal.id] || null}
+                      highlighted={deal.id === highlightedDealId}
                       onFeedback={(signal) => {
                         sendFeedback(deal.id, signal);
-                        track(`feedback_${signal}`, { dealId: deal.id });
+                        if (signal) track(`feedback_${signal}`, { dealId: deal.id });
                       }}
                     />
                   ))
@@ -819,235 +482,21 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 投资偏好 */}
+        {/* ====== 投资偏好 ====== */}
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">投资偏好设置</h2>
-            <p className="text-sm text-gray-500 mb-6">点击选项快速选择，也可以在输入框中自定义补充。修改后点击保存即可生效。</p>
-
-            <div className="space-y-6">
-              {/* 关注赛道 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">关注赛道</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {['AI/ML', 'Developer Tools', 'SaaS', 'Fintech', 'Health Tech', 'EdTech', 'Web3/Crypto', 'E-commerce', 'Climate Tech', 'Consumer', 'Enterprise', 'Marketplace'].map(tag => {
-                    const selected = editSectors.split(',').map(s => s.trim()).includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          const current = editSectors.split(',').map(s => s.trim()).filter(Boolean);
-                          if (selected) {
-                            setEditSectors(current.filter(s => s !== tag).join(', '));
-                          } else {
-                            setEditSectors([...current, tag].join(', '));
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                          selected
-                            ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
-                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
-                        }`}
-                      >
-                        {selected ? '✓ ' : ''}{tag}
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  type="text"
-                  value={editSectors}
-                  onChange={e => setEditSectors(e.target.value)}
-                  placeholder="也可以直接输入，用逗号分隔"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-              </div>
-
-              {/* 投资阶段 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">投资阶段</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Growth'].map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setEditStage(tag)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                        editStage === tag
-                          ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
-                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
-                      }`}
-                    >
-                      {editStage === tag ? '✓ ' : ''}{tag}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="text"
-                  value={editStage}
-                  onChange={e => setEditStage(e.target.value)}
-                  placeholder="或自定义，如 Pre-Seed / Seed"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-              </div>
-
-              {/* 地域偏好 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">地域偏好</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {['Global', 'North America', 'Europe', 'Asia', 'China', 'Southeast Asia', 'India', 'LATAM'].map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => setEditGeo(tag)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                        editGeo === tag
-                          ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
-                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
-                      }`}
-                    >
-                      {editGeo === tag ? '✓ ' : ''}{tag}
-                    </button>
-                  ))}
-                </div>
-                <input
-                  type="text"
-                  value={editGeo}
-                  onChange={e => setEditGeo(e.target.value)}
-                  placeholder="或自定义地域"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-              </div>
-
-              {/* 关注信号 */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">关注信号</label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {['Strong GitHub traction', 'Product Hunt #1', 'Repeat founders', 'Growing waitlist', 'Revenue generating', 'Top accelerator alumni', 'Viral growth', 'Strong technical team'].map(tag => {
-                    const selected = editSignals.split(',').map(s => s.trim()).includes(tag);
-                    return (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => {
-                          const current = editSignals.split(',').map(s => s.trim()).filter(Boolean);
-                          if (selected) {
-                            setEditSignals(current.filter(s => s !== tag).join(', '));
-                          } else {
-                            setEditSignals([...current, tag].join(', '));
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                          selected
-                            ? 'bg-green-100 text-green-700 border-green-300'
-                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-green-300 hover:text-green-600'
-                        }`}
-                      >
-                        {selected ? '✓ ' : ''}{tag}
-                      </button>
-                    );
-                  })}
-                </div>
-                <input
-                  type="text"
-                  value={editSignals}
-                  onChange={e => setEditSignals(e.target.value)}
-                  placeholder="也可以直接输入，用逗号分隔"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-              </div>
-
-              {prefsMsg && (
-                <div className={`text-sm px-3 py-2 rounded-lg ${prefsMsg.includes('已保存') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  {prefsMsg}
-                </div>
-              )}
-
-              <button
-                onClick={savePreferences}
-                disabled={prefsSaving}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {prefsSaving ? '保存中...' : '保存偏好'}
-              </button>
-            </div>
-          </div>
+          <PreferencesForm
+            preferences={preferences}
+            onSaved={setPreferences}
+            onTrack={track}
+          />
         )}
 
-        {/* API 配置 */}
+        {/* ====== API 配置 ====== */}
         {activeTab === 'api' && (
-          <div className="bg-white rounded-xl border border-gray-200 p-8">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">API 配置</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              配置 DeepSeek API 以启用 AI 评分和简报生成功能。
-              <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline ml-1">
-                获取 API Key →
-              </a>
-            </p>
-
-            {/* 当前状态 */}
-            <div className={`p-4 rounded-lg mb-6 ${apiConfig?.deepseekConfigured ? 'bg-green-50 border border-green-200' : 'bg-yellow-50 border border-yellow-200'}`}>
-              <div className="flex items-center gap-2">
-                <span>{apiConfig?.deepseekConfigured ? '✅' : '⚠️'}</span>
-                <span className={`text-sm font-medium ${apiConfig?.deepseekConfigured ? 'text-green-700' : 'text-yellow-700'}`}>
-                  {apiConfig?.deepseekConfigured
-                    ? `已配置 (${apiConfig.deepseekKeyPreview})`
-                    : '未配置 — 请填写 API Key 后保存'}
-                </span>
-              </div>
-            </div>
-
-            {/* 配置表单 */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">DeepSeek API Key</label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={e => setApiKeyInput(e.target.value)}
-                  placeholder={apiConfig?.deepseekConfigured ? '已配置，留空则不修改' : '请输入 sk-...'}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">API 地址</label>
-                <input
-                  type="text"
-                  value={baseUrlInput}
-                  onChange={e => setBaseUrlInput(e.target.value)}
-                  placeholder="https://api.deepseek.com"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-                <p className="text-xs text-gray-400 mt-1">支持兼容 OpenAI 格式的第三方 API 地址</p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">模型名称</label>
-                <input
-                  type="text"
-                  value={modelInput}
-                  onChange={e => setModelInput(e.target.value)}
-                  placeholder="deepseek-chat"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                />
-                <p className="text-xs text-gray-400 mt-1">可选：deepseek-chat、deepseek-reasoner 等</p>
-              </div>
-
-              {configMsg && (
-                <div className={`text-sm px-3 py-2 rounded-lg ${configMsg.includes('成功') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-                  {configMsg}
-                </div>
-              )}
-
-              <button
-                onClick={saveApiConfig}
-                disabled={configSaving}
-                className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
-              >
-                {configSaving ? '保存中...' : '保存配置'}
-              </button>
-            </div>
-          </div>
+          <ApiConfigForm
+            config={apiConfig}
+            onSaved={setApiConfig}
+          />
         )}
       </main>
     </div>
