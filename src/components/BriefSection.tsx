@@ -20,11 +20,13 @@ export function BriefSection({ content, dealNames = [], onDealClick }: BriefSect
     }
   }
 
+  const dealLinkStyles = "[&_.deal-link]:text-indigo-600 [&_.deal-link]:cursor-pointer [&_.deal-link]:underline [&_.deal-link]:decoration-indigo-300 [&_.deal-link]:underline-offset-2 [&_.deal-link]:font-medium [&_.deal-link:hover]:text-indigo-800 [&_.deal-link:hover]:decoration-indigo-500 [&_.deal-link:hover]:bg-indigo-50 [&_.deal-link]:rounded [&_.deal-link]:px-0.5 [&_.deal-link]:transition-colors";
+
   if (sections.length === 0) {
     return (
       <div
         onClick={handleClick}
-        className="prose prose-sm max-w-none text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_hr]:my-4 [&_hr]:border-gray-200 [&_.deal-link]:text-indigo-600 [&_.deal-link]:cursor-pointer [&_.deal-link]:underline [&_.deal-link:hover]:text-indigo-800"
+        className={`prose prose-sm max-w-none text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_hr]:my-4 [&_hr]:border-gray-200 ${dealLinkStyles}`}
         dangerouslySetInnerHTML={{ __html: renderMarkdown(content, dealNames, onDealClick) }}
       />
     );
@@ -38,7 +40,7 @@ export function BriefSection({ content, dealNames = [], onDealClick }: BriefSect
             <h3 className="text-sm font-semibold text-gray-900 mb-2">{section.title}</h3>
           )}
           <div
-            className="text-sm text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_.deal-link]:text-indigo-600 [&_.deal-link]:cursor-pointer [&_.deal-link]:underline [&_.deal-link:hover]:text-indigo-800"
+            className={`text-sm text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 ${dealLinkStyles}`}
             dangerouslySetInnerHTML={{ __html: renderMarkdown(section.body, dealNames, onDealClick) }}
           />
         </div>

@@ -106,6 +106,7 @@ function Dashboard() {
   // Filtering & sorting
   const [verdictFilter, setVerdictFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('score_desc');
 
   // Brief → Deal linking
@@ -241,10 +242,17 @@ function Dashboard() {
   }
 
   // ============ Filtered & Sorted Deals ============
+  // Extract unique categories for filter dropdown
+  const categories = useMemo(() => {
+    const cats = [...new Set(deals.map(d => d.category).filter(Boolean))];
+    return cats.sort();
+  }, [deals]);
+
   const filteredDeals = useMemo(() => {
     let result = deals.filter(deal => {
       if (verdictFilter !== 'all' && deal.verdict !== verdictFilter) return false;
       if (sourceFilter !== 'all' && deal.source !== sourceFilter) return false;
+      if (categoryFilter !== 'all' && deal.category !== categoryFilter) return false;
       return true;
     });
 
@@ -259,13 +267,20 @@ function Dashboard() {
     });
 
     return result;
-  }, [deals, verdictFilter, sourceFilter, sortBy]);
+  }, [deals, verdictFilter, sourceFilter, categoryFilter, sortBy]);
 
   const dealNames = useMemo(() => deals.map(d => d.name), [deals]);
 
   // ============ Render ============
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Demo Banner */}
+      {!apiConfig?.deepseekConfigured && deals.length > 0 && (
+        <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 text-center text-sm text-amber-800">
+          📋 You&apos;re viewing <strong>demo data</strong>. Configure your API key in the API tab to get live results from real sources.
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
@@ -275,10 +290,7 @@ function Dashboard() {
             </div>
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900">DealFlow</h1>
             {apiConfig?.deepseekConfigured && (
-              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">已连接</span>
-            )}
-            {apiConfig && !apiConfig.deepseekConfigured && (
-              <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">未配置</span>
+              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">Connected</span>
             )}
           </div>
           <button
@@ -286,7 +298,7 @@ function Dashboard() {
             disabled={loading}
             className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {loading ? '⏳ 扫描中...' : '🔍 每日扫描'}
+            {loading ? '⏳ Scanning...' : '🔍 Daily Scan'}
           </button>
         </div>
       </header>
@@ -438,13 +450,16 @@ function Dashboard() {
                 <FilterBar
                   verdictFilter={verdictFilter}
                   sourceFilter={sourceFilter}
+                  categoryFilter={categoryFilter}
                   sortBy={sortBy}
                   onVerdictChange={setVerdictFilter}
                   onSourceChange={setSourceFilter}
+                  onCategoryChange={setCategoryFilter}
                   onSortChange={setSortBy}
                   totalCount={deals.length}
                   filteredCount={filteredDeals.length}
-                  onClear={() => { setVerdictFilter('all'); setSourceFilter('all'); }}
+                  onClear={() => { setVerdictFilter('all'); setSourceFilter('all'); setCategoryFilter('all'); }}
+                  categories={categories}
                 />
 
                 {filteredDeals.length > 0 ? (

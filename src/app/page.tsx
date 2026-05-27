@@ -2,8 +2,8 @@
 
 /**
  * DealFlow Landing Page
- * GTM 叙事：Problem → Solution → Differentiation → Waitlist CTA
- * 去掉虚假 social proof，改为真实的需求验证入口
+ * GTM: Problem → Solution → Differentiation → Waitlist CTA
+ * Progressive disclosure: email first → optional details after submit
  */
 
 import { useState } from 'react';
@@ -15,11 +15,13 @@ export default function LandingPage() {
   const [painPoint, setPainPoint] = useState('');
   const [priceWilling, setPriceWilling] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showStep2, setShowStep2] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  async function handleWaitlist(e: React.FormEvent) {
+  // Step 1: just email
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     setErrorMsg('');
@@ -32,15 +34,27 @@ export default function LandingPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setSubmitted(true);
-        setWaitlistCount(data.position || null);
+        if (!showStep2) {
+          // First submit (email only) → show step 2
+          setShowStep2(true);
+          setWaitlistCount(data.position || null);
+        } else {
+          // Step 2 submitted → done
+          setSubmitted(true);
+          setWaitlistCount(data.position || null);
+        }
       } else {
-        setErrorMsg(data.error || '提交失败');
+        setErrorMsg(data.error || 'Submission failed');
       }
     } catch {
-      setErrorMsg('网络错误，请重试');
+      setErrorMsg('Network error, please try again');
     }
     setSubmitting(false);
+  }
+
+  // Skip step 2
+  function skipStep2() {
+    setSubmitted(true);
   }
 
   return (
@@ -55,17 +69,17 @@ export default function LandingPage() {
             <span className="font-semibold text-gray-900">DealFlow</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="#compare" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
-              竞品对比
+            <a href="#compare" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:inline">
+              Compare
             </a>
-            <a href="#pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
-              定价
+            <a href="#pricing" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:inline">
+              Pricing
             </a>
             <Link href="/dashboard" className="text-sm text-gray-600 hover:text-gray-900 transition-colors">
               Demo
             </Link>
             <a href="#waitlist" className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors">
-              加入 Waitlist
+              Get Early Access
             </a>
           </div>
         </div>
@@ -76,116 +90,147 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 rounded-full text-sm text-indigo-700 font-medium mb-8">
             <span className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse"></span>
-            正在验证需求 · 寻找前 100 位早期用户
+            Early Access — Limited to first 100 investors
           </div>
           <h1 className="text-5xl md:text-6xl font-bold text-gray-900 leading-tight mb-6">
-            你的 AI
+            Your AI
             <br />
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Deal Sourcing 助手
+              Deal Sourcing Agent
             </span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            不再手动刷 Product Hunt 和 Twitter。DealFlow 7×24 小时扫描全网，
-            根据你的投资偏好为每个项目打分，每天早上送上一份精选投资简报。
+            Stop manually scrolling Product Hunt and Twitter. DealFlow scans the internet 24/7,
+            scores every project against your investment thesis, and delivers a curated daily brief
+            — so you never miss the next breakout company.
           </p>
 
-          {/* Waitlist Form */}
+          {/* Waitlist Form — Progressive Disclosure */}
           {!submitted ? (
-            <form onSubmit={handleWaitlist} className="max-w-md mx-auto space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="你的邮箱"
-                required
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              />
-              <select
-                value={role}
-                onChange={e => setRole(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              >
-                <option value="">你的身份是？</option>
-                <option value="angel">个人天使投资人</option>
-                <option value="micro_fund">小型基金 GP/LP</option>
-                <option value="vc_associate">VC Associate/Analyst</option>
-                <option value="founder">创业者（想了解投资人视角）</option>
-                <option value="other">其他</option>
-              </select>
-              <textarea
-                value={painPoint}
-                onChange={e => setPainPoint(e.target.value)}
-                placeholder="你目前找项目最大的痛点是什么？（选填，帮助我们做得更好）"
-                rows={2}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
-              />
-              <select
-                value={priceWilling}
-                onChange={e => setPriceWilling(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-              >
-                <option value="">你愿意为这样的工具每月付多少钱？（选填）</option>
-                <option value="0">$0 — 只用免费版</option>
-                <option value="29">$29/月 — 一杯咖啡的钱</option>
-                <option value="49">$49/月 — 如果真的好用</option>
-                <option value="99">$99/月 — 能帮我省 10 小时/周就值</option>
-                <option value="149+">$149+/月 — 只要 ROI 正就行</option>
-              </select>
-              {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="w-full px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-200"
-              >
-                {submitting ? '提交中...' : '加入早期用户 Waitlist →'}
-              </button>
-              <p className="text-xs text-gray-400">免费加入，产品上线后优先体验。不会发垃圾邮件。</p>
+            <form onSubmit={handleEmailSubmit} className="max-w-md mx-auto">
+              {!showStep2 ? (
+                /* Step 1: Just email */
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="Your email"
+                    required
+                    className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-200 whitespace-nowrap"
+                  >
+                    {submitting ? '...' : 'Get Early Access →'}
+                  </button>
+                </div>
+              ) : (
+                /* Step 2: Optional details (after email captured) */
+                <div className="space-y-3 text-left">
+                  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700 text-center">
+                    ✓ You&apos;re in! {waitlistCount ? `#${waitlistCount} on the list.` : ''} Help us build the right product:
+                  </div>
+                  <select
+                    value={role}
+                    onChange={e => setRole(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  >
+                    <option value="">What best describes you? (optional)</option>
+                    <option value="angel">Solo Angel Investor</option>
+                    <option value="micro_fund">Micro-fund GP/LP</option>
+                    <option value="vc_associate">VC Associate/Analyst</option>
+                    <option value="founder">Founder (curious about investor POV)</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <textarea
+                    value={painPoint}
+                    onChange={e => setPainPoint(e.target.value)}
+                    placeholder="What's your biggest pain point in finding deals? (optional)"
+                    rows={2}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+                  />
+                  <select
+                    value={priceWilling}
+                    onChange={e => setPriceWilling(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  >
+                    <option value="">What would you pay monthly? (optional)</option>
+                    <option value="0">$0 — Free only</option>
+                    <option value="29">$29/mo — If it saves me time</option>
+                    <option value="49">$49/mo — If it&apos;s genuinely useful</option>
+                    <option value="99">$99/mo — If it saves me 10+ hrs/week</option>
+                    <option value="149+">$149+/mo — If the ROI is clear</option>
+                  </select>
+                  {errorMsg && <p className="text-sm text-red-600">{errorMsg}</p>}
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    >
+                      {submitting ? 'Saving...' : 'Submit & Done'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={skipStep2}
+                      className="px-4 py-3 text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
+              )}
+              {!showStep2 && (
+                <p className="text-xs text-gray-400 mt-3">Free to join. No spam. First access when we launch.</p>
+              )}
+              {!showStep2 && errorMsg && <p className="text-sm text-red-600 mt-2">{errorMsg}</p>}
             </form>
           ) : (
             <div className="max-w-md mx-auto bg-green-50 border border-green-200 rounded-xl p-6">
               <div className="text-2xl mb-2">🎉</div>
-              <p className="text-green-800 font-medium mb-1">已加入等待列表！</p>
+              <p className="text-green-800 font-medium mb-1">You&apos;re on the list!</p>
               <p className="text-green-600 text-sm">
-                {waitlistCount ? `你是第 ${waitlistCount} 位。` : ''}我们会在产品准备好后第一时间通知你。
+                {waitlistCount ? `You're #${waitlistCount}. ` : ''}We&apos;ll notify you as soon as we launch.
               </p>
               <Link href="/dashboard" className="inline-block mt-4 text-sm text-indigo-600 hover:underline">
-                想先体验 Demo 版？→
+                Try the demo now →
               </Link>
             </div>
           )}
         </div>
       </section>
 
-      {/* Pain Points — 基于真实用户调研 */}
+      {/* Pain Points */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            Deal Sourcing 的真实痛点
+            The Deal Sourcing Problem
           </h2>
           <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-            基于 AngelList 社区讨论、On Deck Angels 公开分享、以及 Twitter/X 上投资人的公开吐槽整理。
-            <span className="text-gray-400 text-xs block mt-1">（我们正在通过 Waitlist 和 Cold DM 做一手验证，欢迎你成为我们的访谈对象）</span>
+            Based on AngelList community discussions, On Deck Angels public shares, and investor conversations on Twitter/X.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 icon: '⏰',
-                title: '每周 10+ 小时手动找项目',
-                desc: '"I spend 1-2 hours every morning scanning Twitter, PH, and Slack groups. 90% is noise." — AngelList 社区帖子',
-                stat: '高频痛点',
+                title: '10+ hours/week scanning manually',
+                desc: '"I spend 1-2 hours every morning scanning Twitter, PH, and Slack groups. 90% is noise." — AngelList community',
+                stat: 'High-frequency pain',
               },
               {
                 icon: '😵',
-                title: '好项目发现太晚',
-                desc: '"By the time I see a deal, 3 funds already have term sheets out. Seed rounds close in 3 weeks now." — On Deck Angels 分享',
-                stat: '结构性问题',
+                title: 'Best deals found too late',
+                desc: '"By the time I see a deal, 3 funds already have term sheets out. Seed rounds close in 3 weeks now." — On Deck Angels',
+                stat: 'Structural problem',
               },
               {
                 icon: '💸',
-                title: '专业工具太贵',
-                desc: '"Pitchbook is $25K/yr, Harmonic is $15K/yr. I do 10 deals a year — can\'t justify that." — Twitter/X 讨论',
-                stat: '价格断层',
+                title: 'Pro tools are too expensive',
+                desc: '"Pitchbook is $25K/yr, Harmonic is $15K/yr. I do 10 deals a year — can\'t justify that." — Twitter/X',
+                stat: 'Price gap',
               },
             ].map(item => (
               <div key={item.title} className="bg-white rounded-xl p-8 border border-gray-200">
@@ -193,7 +238,7 @@ export default function LandingPage() {
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600 mb-3">{item.desc}</p>
                 <span className="text-xs text-indigo-600 font-medium bg-indigo-50 px-2 py-1 rounded-full">
-                  {item.stat}提到此问题
+                  {item.stat}
                 </span>
               </div>
             ))}
@@ -205,26 +250,26 @@ export default function LandingPage() {
       <section className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            DealFlow 如何工作
+            How DealFlow Works
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 step: '01',
-                title: '设定投资偏好',
-                desc: '告诉我们你关注的赛道、阶段、地域，以及什么信号对你重要。5 分钟完成。',
+                title: 'Set your thesis',
+                desc: 'Tell us your sectors, stage, geography, and what signals matter to you. Takes 5 minutes.',
                 icon: '🎯',
               },
               {
                 step: '02',
-                title: 'AI 全天候扫描',
-                desc: 'Agent 监控 Product Hunt、GitHub Trending、融资新闻、创始人动态，自动过滤噪音。',
+                title: 'AI scans 24/7',
+                desc: 'Our agent monitors Product Hunt, GitHub Trending, funding news, and founder activity — filtering out the noise.',
                 icon: '🤖',
               },
               {
                 step: '03',
-                title: '每日投资简报',
-                desc: '每天早上收到 3-5 个精选项目，附带匹配评分、亮点分析和建议动作。',
+                title: 'Daily deal brief',
+                desc: 'Every morning, get 3-5 curated projects with match scores, highlights, and suggested next actions.',
                 icon: '📬',
               },
             ].map(item => (
@@ -232,7 +277,7 @@ export default function LandingPage() {
                 <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4">
                   {item.icon}
                 </div>
-                <div className="text-xs font-bold text-indigo-600 mb-2">第 {item.step} 步</div>
+                <div className="text-xs font-bold text-indigo-600 mb-2">STEP {item.step}</div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600">{item.desc}</p>
               </div>
@@ -241,67 +286,70 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 竞品对比 */}
+      {/* Competitive Comparison */}
       <section id="compare" className="py-20 px-6 bg-gray-50">
         <div className="max-w-4xl mx-auto">
           <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">
-            为什么选 DealFlow
+            Why DealFlow
           </h2>
           <p className="text-center text-gray-600 mb-12">
-            市面上不缺数据库，缺的是一个"帮你看完并告诉你结论"的助手。
+            There&apos;s no shortage of databases. What&apos;s missing is an agent that reads everything and tells you what matters.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full bg-white rounded-xl border border-gray-200 overflow-hidden">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500">对比维度</th>
+                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-500"></th>
                   <th className="px-6 py-4 text-center text-sm font-medium text-gray-500">Pitchbook</th>
                   <th className="px-6 py-4 text-center text-sm font-medium text-gray-500">Crunchbase Pro</th>
-                  <th className="px-6 py-4 text-center text-sm font-medium text-indigo-600 bg-indigo-50">DealFlow</th>
+                  <th className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50 border-x-2 border-indigo-200 relative">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-2 py-0.5 rounded-full font-medium">Recommended</span>
+                    DealFlow
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">年费</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Annual cost</td>
                   <td className="px-6 py-4 text-center text-sm text-gray-600">$25,000+</td>
                   <td className="px-6 py-4 text-center text-sm text-gray-600">$588</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">$1,188</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">$1,188</td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">使用方式</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">你去搜索</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">你去搜索</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">主动推送给你</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Mode</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">You search</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">You search</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">Pushed to you</td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">个性化程度</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">通用筛选器</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">通用筛选器</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">按你的 Thesis 评分</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Personalization</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Generic filters</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Generic filters</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">Scored by your thesis</td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">信号来源</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">融资数据</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">融资数据</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">PH + GitHub + 社交 + 融资</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Signal sources</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Funding data</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Funding data</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">PH + GitHub + Social + Funding</td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">目标用户</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">大型基金</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">所有人</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">Solo Angel / 小基金</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Target user</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Fund teams</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">Everyone</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">Solo angels & micro-funds</td>
                 </tr>
                 <tr>
-                  <td className="px-6 py-4 text-sm text-gray-700">每天花费时间</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">1-2 小时</td>
-                  <td className="px-6 py-4 text-center text-sm text-gray-600">30-60 分钟</td>
-                  <td className="px-6 py-4 text-center text-sm font-medium text-indigo-700 bg-indigo-50">5 分钟读简报</td>
+                  <td className="px-6 py-4 text-sm text-gray-700 font-medium">Daily time cost</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">1-2 hours</td>
+                  <td className="px-6 py-4 text-center text-sm text-gray-600">30-60 min</td>
+                  <td className="px-6 py-4 text-center text-sm font-semibold text-indigo-700 bg-indigo-50/50 border-x-2 border-indigo-100">5 min (read brief)</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p className="text-center text-sm text-gray-500 mt-6">
-            一句话：DealFlow 是"投资人的 Morning Brew"——不是给你一个数据库让你自己翻，而是每天早上告诉你"今天有什么值得看的"。
+            DealFlow is &quot;Morning Brew for investors&quot; — instead of giving you a database to search, it tells you every morning what&apos;s worth looking at.
           </p>
         </div>
       </section>
@@ -309,65 +357,62 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">定价</h2>
-          <p className="text-center text-gray-600 mb-4">一笔投资 $50K，DealFlow 年费 = 投资额的 2.4%。多发现一个好项目就值回来了。</p>
-          <p className="text-center text-xs text-gray-400 mb-12">定价基于 20+ 位投资人访谈反馈，锚定在 Crunchbase Pro 和 Harmonic 之间。</p>
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-4">Pricing</h2>
+          <p className="text-center text-gray-600 mb-4">Average angel deal is $50K. DealFlow annual = 2.4% of one investment. Find one extra good deal and it pays for itself 40x.</p>
+          <p className="text-center text-xs text-gray-400 mb-12">Pricing anchored between Crunchbase Pro ($49/mo) and Harmonic ($1,250/mo).</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {/* Free */}
             <div className="bg-white rounded-xl border border-gray-200 p-8">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">探索版</h3>
-              <div className="text-3xl font-bold text-gray-900 mb-6">$0<span className="text-base font-normal text-gray-500">/月</span></div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Explorer</h3>
+              <div className="text-3xl font-bold text-gray-900 mb-6">$0<span className="text-base font-normal text-gray-500">/mo</span></div>
               <ul className="space-y-3 text-gray-600 mb-8">
-                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 每天 3 个评分项目</li>
-                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 每周简报（仅周一）</li>
-                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Product Hunt + GitHub 数据源</li>
-                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> <span className="text-gray-400">自定义投资偏好调优</span></li>
-                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> <span className="text-gray-400">融资新闻 + 社交信号</span></li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> 3 scored deals per day</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Weekly brief (Monday only)</li>
+                <li className="flex items-center gap-2"><span className="text-green-500">✓</span> Product Hunt + GitHub sources</li>
+                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> <span className="text-gray-400">Custom thesis tuning</span></li>
+                <li className="flex items-center gap-2"><span className="text-gray-300">✗</span> <span className="text-gray-400">Funding news + social signals</span></li>
               </ul>
               <a href="#waitlist" className="block w-full text-center px-6 py-3 border border-gray-200 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors">
-                加入 Waitlist
+                Join Waitlist
               </a>
             </div>
             {/* Pro */}
             <div className="bg-indigo-600 rounded-xl p-8 text-white relative overflow-hidden">
               <div className="absolute top-4 right-4 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-full">
-                早鸟价
+                Early Bird
               </div>
-              <h3 className="text-lg font-semibold mb-2">专业版</h3>
-              <div className="text-3xl font-bold mb-1">$99<span className="text-base font-normal text-indigo-200">/月</span></div>
-              <p className="text-indigo-200 text-xs mb-6">前 100 位用户锁定此价格，后续可能调整</p>
+              <h3 className="text-lg font-semibold mb-2">Pro</h3>
+              <div className="text-3xl font-bold mb-1">$99<span className="text-base font-normal text-indigo-200">/mo</span></div>
+              <p className="text-indigo-200 text-xs mb-6">Locked for first 100 users. May increase later.</p>
               <ul className="space-y-3 text-indigo-100 mb-8">
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> 无限评分项目</li>
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> 每日简报（每天早上）</li>
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> 全部数据源 + 融资新闻 + 社交信号</li>
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> 自定义 Thesis & 信号权重</li>
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Slack / 邮件 / 飞书推送</li>
-                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> 导出 Deal Pipeline CSV</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Unlimited scored deals</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Daily brief (every morning)</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> All sources + funding + social</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Custom thesis & signal weights</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Slack / Email / Lark delivery</li>
+                <li className="flex items-center gap-2"><span className="text-yellow-300">✓</span> Export deal pipeline CSV</li>
               </ul>
               <a href="#waitlist" className="block w-full text-center px-6 py-3 bg-white text-indigo-600 rounded-lg font-medium hover:bg-indigo-50 transition-colors">
-                加入 Waitlist · 锁定早鸟价
+                Get Early Access · Lock Price
               </a>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 透明度声明 — 替代虚假 social proof */}
+      {/* Transparency */}
       <section className="py-20 px-6 bg-gray-50">
         <div className="max-w-3xl mx-auto text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">关于这个项目</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">About This Project</h2>
           <div className="bg-white rounded-xl border border-gray-200 p-8 text-left space-y-4 text-gray-700">
             <p>
-              <strong>诚实声明：</strong>DealFlow 目前是 MVP 阶段。我们没有虚构用户评价，因为我们相信 GTM 的第一步是验证真实需求，而不是制造虚假繁荣。
+              <strong>Honest disclosure:</strong> DealFlow is in MVP stage. We don&apos;t have fake testimonials because we believe the first step in GTM is validating real demand, not manufacturing social proof.
             </p>
             <p>
-              <strong>当前状态：</strong>核心功能已可用（AI 评分 + 每日简报），正在寻找前 100 位早期用户共同打磨产品。你的反馈会直接影响产品方向。
+              <strong>Current status:</strong> Core features work (AI scoring + daily brief + feedback flywheel). We&apos;re looking for our first 100 early users to shape the product together. Your feedback directly influences what we build next.
             </p>
             <p>
-              <strong>技术选型：</strong>Next.js + DeepSeek API + SQLite。选择 DeepSeek 是因为性价比最优（同等质量下成本是 GPT-4 的 1/10），选择 SQLite 是因为 MVP 阶段不需要分布式数据库。
-            </p>
-            <p>
-              <strong>商业逻辑：</strong>详见 <Link href="https://github.com" className="text-indigo-600 hover:underline">GTM 文档</Link>。我们的定位是"投资人的 Morning Brew"，不是另一个 Pitchbook。
+              <strong>Tech:</strong> Next.js + DeepSeek API + SQLite. DeepSeek because it&apos;s 10x cheaper than GPT-4 at comparable quality. SQLite because MVP doesn&apos;t need distributed databases.
             </p>
           </div>
         </div>
@@ -376,17 +421,17 @@ export default function LandingPage() {
       {/* Bottom CTA */}
       <section className="py-20 px-6 bg-gradient-to-br from-indigo-600 to-purple-700">
         <div className="max-w-3xl mx-auto text-center text-white">
-          <h2 className="text-3xl font-bold mb-4">帮我们验证这个想法</h2>
+          <h2 className="text-3xl font-bold mb-4">Never miss the next breakout company</h2>
           <p className="text-indigo-100 text-lg mb-8">
-            如果你是天使投资人或小型基金 GP，我们想听听你的真实痛点。
-            <br />加入 Waitlist，或者直接试用 Demo 版给我们反馈。
+            5 minutes every morning. Curated deals scored against your thesis.
+            <br />Join the waitlist or try the demo — no signup required.
           </p>
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
             <a href="#waitlist" className="px-8 py-4 bg-white text-indigo-600 rounded-xl text-lg font-medium hover:bg-indigo-50 transition-colors shadow-lg">
-              加入 Waitlist
+              Get Early Access
             </a>
             <Link href="/dashboard" className="px-8 py-4 border-2 border-white/50 text-white rounded-xl text-lg font-medium hover:bg-white/10 transition-colors">
-              试用 Demo →
+              Try Demo →
             </Link>
           </div>
         </div>
@@ -399,12 +444,11 @@ export default function LandingPage() {
             <div className="w-6 h-6 bg-gradient-to-br from-indigo-500 to-purple-600 rounded flex items-center justify-center">
               <span className="text-white text-xs font-bold">D</span>
             </div>
-            <span>DealFlow © 2025 · MVP 阶段</span>
+            <span>DealFlow © 2025</span>
           </div>
           <div className="flex gap-6">
             <a href="#" className="hover:text-gray-900 transition-colors">Twitter</a>
             <a href="#" className="hover:text-gray-900 transition-colors">GitHub</a>
-            <a href="#" className="hover:text-gray-900 transition-colors">隐私政策</a>
           </div>
         </div>
       </footer>

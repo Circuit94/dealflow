@@ -144,31 +144,34 @@ export function DealCard({
               )}
             </div>
             <span className="text-xs text-gray-400">评分</span>
-            {/* Feedback buttons — click again to cancel */}
-            <div className="flex gap-1 mt-1">
+            {/* Feedback buttons — prominent, click again to cancel */}
+            <div className="flex gap-1.5 mt-2">
               <button
                 onClick={() => onFeedback(feedback === 'interested' ? null : 'interested')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
                   feedback === 'interested'
-                    ? 'bg-green-100 text-green-600 ring-2 ring-green-300'
-                    : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-600'
+                    ? 'bg-green-100 text-green-600 ring-2 ring-green-300 scale-110'
+                    : 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-600 hover:scale-105'
                 }`}
-                title={feedback === 'interested' ? '点击取消' : '感兴趣'}
+                title={feedback === 'interested' ? 'Click to undo' : 'Interested'}
               >
                 👍
               </button>
               <button
                 onClick={() => onFeedback(feedback === 'pass' ? null : 'pass')}
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
+                className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-all ${
                   feedback === 'pass'
-                    ? 'bg-red-100 text-red-600 ring-2 ring-red-300'
-                    : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                    ? 'bg-red-100 text-red-600 ring-2 ring-red-300 scale-110'
+                    : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:scale-105'
                 }`}
-                title={feedback === 'pass' ? '点击取消' : '跳过'}
+                title={feedback === 'pass' ? 'Click to undo' : 'Pass'}
               >
                 👎
               </button>
             </div>
+            {!feedback && (
+              <span className="text-xs text-gray-400 mt-1">Rate this</span>
+            )}
           </div>
         </div>
       </div>

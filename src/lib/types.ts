@@ -20,6 +20,7 @@ export interface InvestorPreferences {
   stage: string;
   geography: string;
   signals: string[];
+  thesis?: string;
 }
 
 export interface DealScore {

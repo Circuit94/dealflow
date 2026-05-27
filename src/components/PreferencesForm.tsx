@@ -7,6 +7,7 @@ interface Preferences {
   stage: string;
   geography: string;
   signals: string[];
+  thesis?: string;
 }
 
 interface PreferencesFormProps {
@@ -20,6 +21,7 @@ export function PreferencesForm({ preferences, onSaved, onTrack }: PreferencesFo
   const [editStage, setEditStage] = useState('');
   const [editGeo, setEditGeo] = useState('');
   const [editSignals, setEditSignals] = useState('');
+  const [editThesis, setEditThesis] = useState('');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -29,12 +31,13 @@ export function PreferencesForm({ preferences, onSaved, onTrack }: PreferencesFo
       setEditStage(preferences.stage || '');
       setEditGeo(preferences.geography || '');
       setEditSignals(preferences.signals?.join(', ') || '');
+      setEditThesis(preferences.thesis || '');
     }
   }, [preferences]);
 
   // Auto-dismiss success message
   useEffect(() => {
-    if (msg && msg.includes('已保存')) {
+    if (msg && msg.includes('Saved')) {
       const timer = setTimeout(() => setMsg(''), 4000);
       return () => clearTimeout(timer);
     }
@@ -49,6 +52,7 @@ export function PreferencesForm({ preferences, onSaved, onTrack }: PreferencesFo
         stage: editStage.trim(),
         geography: editGeo.trim(),
         signals: editSignals.split(',').map(s => s.trim()).filter(Boolean),
+        thesis: editThesis.trim(),
       };
       const res = await fetch('/api/preferences', {
         method: 'PUT',
@@ -58,69 +62,82 @@ export function PreferencesForm({ preferences, onSaved, onTrack }: PreferencesFo
       const data = await res.json();
       if (data.success) {
         onSaved(data.preferences);
-        setMsg('✅ 偏好已保存！下次扫描将使用新设置。');
+        setMsg('✅ Saved! Next scan will use your updated preferences.');
         onTrack('preferences_updated', payload);
       } else {
-        setMsg(`❌ 保存失败：${data.error}`);
+        setMsg(`❌ Save failed: ${data.error}`);
       }
     } catch {
-      setMsg('❌ 保存失败，请检查网络');
+      setMsg('❌ Save failed, check network');
     }
     setSaving(false);
   }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8">
-      <h2 className="text-lg font-semibold text-gray-900 mb-2">投资偏好设置</h2>
-      <p className="text-sm text-gray-500 mb-6">点击选项快速选择，也可以在输入框中自定义补充。修改后点击保存即可生效。</p>
+      <h2 className="text-lg font-semibold text-gray-900 mb-2">Investment Preferences</h2>
+      <p className="text-sm text-gray-500 mb-6">Your choices directly influence AI scoring weights — the more precise, the better the recommendations.</p>
 
       <div className="space-y-6">
-        {/* 关注赛道 */}
+        {/* Thesis free-text */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Investment Thesis (free-text)</label>
+          <p className="text-xs text-gray-400 mb-2">Describe your unique thesis in your own words. This is injected directly into the AI scoring prompt for maximum personalization.</p>
+          <textarea
+            value={editThesis}
+            onChange={e => setEditThesis(e.target.value)}
+            placeholder="e.g. I look for B2B SaaS with PLG motion, strong technical founders, and early revenue. Prefer companies solving workflow problems for SMBs."
+            rows={3}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+          />
+        </div>
+
+        {/* Sectors */}
         <TagField
-          label="关注赛道"
+          label="Sectors"
           tags={['AI/ML', 'Developer Tools', 'SaaS', 'Fintech', 'Health Tech', 'EdTech', 'Web3/Crypto', 'E-commerce', 'Climate Tech', 'Consumer', 'Enterprise', 'Marketplace']}
           value={editSectors}
           onChange={setEditSectors}
           multi
           color="indigo"
-          placeholder="也可以直接输入，用逗号分隔"
+          placeholder="Or type custom, comma-separated"
         />
 
-        {/* 投资阶段 */}
+        {/* Stage */}
         <TagField
-          label="投资阶段"
+          label="Stage"
           tags={['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Growth']}
           value={editStage}
           onChange={setEditStage}
           multi={false}
           color="indigo"
-          placeholder="或自定义，如 Pre-Seed / Seed"
+          placeholder="Or type custom stage"
         />
 
-        {/* 地域偏好 */}
+        {/* Geography */}
         <TagField
-          label="地域偏好"
+          label="Geography"
           tags={['Global', 'North America', 'Europe', 'Asia', 'China', 'Southeast Asia', 'India', 'LATAM']}
           value={editGeo}
           onChange={setEditGeo}
           multi={false}
           color="indigo"
-          placeholder="或自定义地域"
+          placeholder="Or type custom geography"
         />
 
-        {/* 关注信号 */}
+        {/* Signals */}
         <TagField
-          label="关注信号"
+          label="Signals to watch"
           tags={['Strong GitHub traction', 'Product Hunt #1', 'Repeat founders', 'Growing waitlist', 'Revenue generating', 'Top accelerator alumni', 'Viral growth', 'Strong technical team']}
           value={editSignals}
           onChange={setEditSignals}
           multi
           color="green"
-          placeholder="也可以直接输入，用逗号分隔"
+          placeholder="Or type custom, comma-separated"
         />
 
         {msg && (
-          <div className={`text-sm px-4 py-3 rounded-lg transition-opacity ${msg.includes('已保存') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          <div className={`text-sm px-4 py-3 rounded-lg transition-opacity ${msg.includes('Saved') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
             {msg}
           </div>
         )}
@@ -130,7 +147,7 @@ export function PreferencesForm({ preferences, onSaved, onTrack }: PreferencesFo
           disabled={saving}
           className="px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
         >
-          {saving ? '保存中...' : '保存偏好'}
+          {saving ? 'Saving...' : 'Save Preferences'}
         </button>
       </div>
     </div>

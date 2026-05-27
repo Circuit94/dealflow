@@ -66,13 +66,17 @@ export async function scoreDeal(deal: DealCandidate, preferences: InvestorPrefer
     ? `\n\n投资人历史反馈模式（请据此调整评分权重）：\n${patterns.map(p => `- ${p}`).join('\n')}`
     : '';
 
+  const thesisContext = preferences.thesis
+    ? `\n\n投资人投资论点（最高优先级，直接影响评分）：\n${preferences.thesis}`
+    : '';
+
   const prompt = `你是一位经验丰富的 VC 分析师。请根据投资人的偏好，对以下项目进行评分和分析。
 
 投资人偏好：
 - 关注赛道：${preferences.sectors.join(', ')}
 - 投资阶段：${preferences.stage}
 - 地域偏好：${preferences.geography}
-- 关注信号：${preferences.signals.join(', ')}${feedbackContext}
+- 关注信号：${preferences.signals.join(', ')}${thesisContext}${feedbackContext}
 
 项目信息：
 - 名称：${deal.name}

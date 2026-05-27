@@ -27,6 +27,7 @@ interface PreferencesRow {
   stage: string;
   geography: string;
   signals: string;
+  thesis: string | null;
   updated_at: string;
 }
 
@@ -83,6 +84,7 @@ function initTables() {
       stage TEXT NOT NULL DEFAULT 'Seed',
       geography TEXT NOT NULL DEFAULT 'Global',
       signals TEXT NOT NULL DEFAULT '[]',
+      thesis TEXT DEFAULT NULL,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -137,6 +139,13 @@ function initTables() {
     );
   `);
 
+  // Migration: add thesis column if missing (for existing DBs)
+  try {
+    database.prepare('SELECT thesis FROM investor_preferences LIMIT 1').get();
+  } catch {
+    database.exec('ALTER TABLE investor_preferences ADD COLUMN thesis TEXT DEFAULT NULL');
+  }
+
   // Insert default preferences if not exists
   const existing = database.prepare('SELECT id FROM investor_preferences WHERE id = ?').get('default');
   if (!existing) {
@@ -162,6 +171,7 @@ export function getPreferences(): InvestorPreferences | null {
     stage: row.stage,
     geography: row.geography,
     signals: JSON.parse(row.signals),
+    thesis: row.thesis || undefined,
   };
 }
 
@@ -172,17 +182,19 @@ export function updatePreferences(prefs: Partial<InvestorPreferences>): Investor
     stage: prefs.stage ?? current?.stage ?? 'Seed',
     geography: prefs.geography ?? current?.geography ?? 'Global',
     signals: prefs.signals ?? current?.signals ?? [],
+    thesis: prefs.thesis ?? current?.thesis ?? undefined,
   };
   
   getDB().prepare(`
     UPDATE investor_preferences 
-    SET sectors = ?, stage = ?, geography = ?, signals = ?, updated_at = CURRENT_TIMESTAMP
+    SET sectors = ?, stage = ?, geography = ?, signals = ?, thesis = ?, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
   `).run(
     JSON.stringify(updated.sectors),
     updated.stage,
     updated.geography,
     JSON.stringify(updated.signals),
+    updated.thesis || null,
     'default'
   );
   
