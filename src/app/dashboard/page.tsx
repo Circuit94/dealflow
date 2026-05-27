@@ -459,54 +459,139 @@ export default function Dashboard() {
         {activeTab === 'settings' && (
           <div className="bg-white rounded-xl border border-gray-200 p-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">投资偏好设置</h2>
-            <p className="text-sm text-gray-500 mb-6">偏好设置越具体，AI 匹配项目的精准度越高。修改后点击保存即可生效。</p>
+            <p className="text-sm text-gray-500 mb-6">点击选项快速选择，也可以在输入框中自定义补充。修改后点击保存即可生效。</p>
 
-            <div className="space-y-5">
+            <div className="space-y-6">
+              {/* 关注赛道 — 选项 + 自定义 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">关注赛道</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">关注赛道</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['AI/ML', 'Developer Tools', 'SaaS', 'Fintech', 'Health Tech', 'EdTech', 'Web3/Crypto', 'E-commerce', 'Climate Tech', 'Consumer', 'Enterprise', 'Marketplace'].map(tag => {
+                    const selected = editSectors.split(',').map(s => s.trim()).includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const current = editSectors.split(',').map(s => s.trim()).filter(Boolean);
+                          if (selected) {
+                            setEditSectors(current.filter(s => s !== tag).join(', '));
+                          } else {
+                            setEditSectors([...current, tag].join(', '));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          selected
+                            ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                        }`}
+                      >
+                        {selected ? '✓ ' : ''}{tag}
+                      </button>
+                    );
+                  })}
+                </div>
                 <input
                   type="text"
                   value={editSectors}
                   onChange={e => setEditSectors(e.target.value)}
-                  placeholder="AI/ML, Developer Tools, SaaS, Fintech"
+                  placeholder="也可以直接输入，用逗号分隔"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                 />
-                <p className="text-xs text-gray-400 mt-1">用逗号分隔多个赛道</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">投资阶段</label>
-                  <input
-                    type="text"
-                    value={editStage}
-                    onChange={e => setEditStage(e.target.value)}
-                    placeholder="Pre-Seed / Seed"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">地域偏好</label>
-                  <input
-                    type="text"
-                    value={editGeo}
-                    onChange={e => setEditGeo(e.target.value)}
-                    placeholder="Global"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  />
-                </div>
-              </div>
-
+              {/* 投资阶段 — 单选 + 自定义 */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">关注信号</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">投资阶段</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['Pre-Seed', 'Seed', 'Series A', 'Series B', 'Growth'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setEditStage(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        editStage === tag
+                          ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                      }`}
+                    >
+                      {editStage === tag ? '✓ ' : ''}{tag}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={editStage}
+                  onChange={e => setEditStage(e.target.value)}
+                  placeholder="或自定义，如 Pre-Seed / Seed"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              {/* 地域偏好 — 选项 + 自定义 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">地域偏好</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['Global', 'North America', 'Europe', 'Asia', 'China', 'Southeast Asia', 'India', 'LATAM'].map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setEditGeo(tag)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        editGeo === tag
+                          ? 'bg-indigo-100 text-indigo-700 border-indigo-300'
+                          : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600'
+                      }`}
+                    >
+                      {editGeo === tag ? '✓ ' : ''}{tag}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={editGeo}
+                  onChange={e => setEditGeo(e.target.value)}
+                  placeholder="或自定义地域"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                />
+              </div>
+
+              {/* 关注信号 — 多选 + 自定义 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">关注信号</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {['Strong GitHub traction', 'Product Hunt #1', 'Repeat founders', 'Growing waitlist', 'Revenue generating', 'Top accelerator alumni', 'Viral growth', 'Strong technical team'].map(tag => {
+                    const selected = editSignals.split(',').map(s => s.trim()).includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => {
+                          const current = editSignals.split(',').map(s => s.trim()).filter(Boolean);
+                          if (selected) {
+                            setEditSignals(current.filter(s => s !== tag).join(', '));
+                          } else {
+                            setEditSignals([...current, tag].join(', '));
+                          }
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          selected
+                            ? 'bg-green-100 text-green-700 border-green-300'
+                            : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-green-300 hover:text-green-600'
+                        }`}
+                      >
+                        {selected ? '✓ ' : ''}{tag}
+                      </button>
+                    );
+                  })}
+                </div>
                 <input
                   type="text"
                   value={editSignals}
                   onChange={e => setEditSignals(e.target.value)}
-                  placeholder="Strong GitHub traction, Product Hunt #1, Repeat founders"
+                  placeholder="也可以直接输入，用逗号分隔"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                 />
-                <p className="text-xs text-gray-400 mt-1">用逗号分隔，描述你认为重要的投资信号</p>
               </div>
 
               {prefsMsg && (
