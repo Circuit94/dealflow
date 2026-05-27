@@ -260,6 +260,17 @@ export function getFeedbackStats(): { interested: number; passed: number } {
   return { interested: interested.count, passed: passed.count };
 }
 
+export function getAllFeedback(): Record<string, 'interested' | 'pass'> {
+  const rows = getDB().prepare(
+    'SELECT deal_id, signal FROM deal_feedback'
+  ).all() as { deal_id: string; signal: 'interested' | 'pass' }[];
+  const result: Record<string, 'interested' | 'pass'> = {};
+  for (const row of rows) {
+    result[row.deal_id] = row.signal;
+  }
+  return result;
+}
+
 // ============ Event Tracking (极简埋点) ============
 export function trackEvent(eventType: string, eventData?: Record<string, unknown>, page?: string): void {
   getDB().prepare(`

@@ -9,7 +9,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
-import { saveFeedback, getFeedbackStats, trackEvent } from '@/lib/db';
+import { saveFeedback, getFeedbackStats, getAllFeedback, trackEvent } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
 export async function GET() {
   try {
     const stats = getFeedbackStats();
-    return NextResponse.json({ success: true, stats });
+    const feedbackMap = getAllFeedback();
+    return NextResponse.json({ success: true, stats, feedbackMap });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ success: false, error: message }, { status: 500 });

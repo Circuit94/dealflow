@@ -41,16 +41,409 @@ interface ApiConfig {
   deepseekModel: string;
 }
 
+// ============ Skeleton Components ============
+function SkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-6 animate-pulse">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="h-4 w-20 bg-gray-200 rounded" />
+            <div className="h-5 w-40 bg-gray-200 rounded" />
+            <div className="h-5 w-16 bg-gray-200 rounded-full" />
+          </div>
+          <div className="h-4 w-3/4 bg-gray-200 rounded" />
+          <div className="h-8 w-full bg-gray-100 rounded-lg" />
+          <div className="flex gap-2">
+            <div className="h-5 w-16 bg-gray-100 rounded" />
+            <div className="h-5 w-24 bg-gray-100 rounded" />
+          </div>
+        </div>
+        <div className="ml-6 flex flex-col items-center gap-2">
+          <div className="w-14 h-14 bg-gray-200 rounded-full" />
+          <div className="h-3 w-8 bg-gray-100 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SkeletonBrief() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 animate-pulse">
+      <div className="flex items-center justify-between mb-6">
+        <div className="h-6 w-32 bg-gray-200 rounded" />
+        <div className="flex gap-4">
+          <div className="h-4 w-24 bg-gray-100 rounded" />
+          <div className="h-4 w-20 bg-gray-100 rounded" />
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="h-4 w-full bg-gray-100 rounded" />
+        <div className="h-4 w-5/6 bg-gray-100 rounded" />
+        <div className="h-4 w-4/6 bg-gray-100 rounded" />
+        <div className="h-4 w-full bg-gray-100 rounded" />
+        <div className="h-4 w-3/4 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
+// ============ Onboarding Stepper ============
+function OnboardingStepper({
+  apiConfigured,
+  hasPreferences,
+  hasDeals,
+  onGoToApi,
+  onGoToPrefs,
+  onRunScan,
+  loading,
+}: {
+  apiConfigured: boolean;
+  hasPreferences: boolean;
+  hasDeals: boolean;
+  onGoToApi: () => void;
+  onGoToPrefs: () => void;
+  onRunScan: () => void;
+  loading: boolean;
+}) {
+  const steps = [
+    {
+      label: '配置 API Key',
+      description: '连接 DeepSeek 以启用 AI 评分',
+      done: apiConfigured,
+      action: onGoToApi,
+      actionLabel: '前往配置',
+    },
+    {
+      label: '设置投资偏好',
+      description: '告诉 AI 你关注什么赛道和阶段',
+      done: hasPreferences,
+      action: onGoToPrefs,
+      actionLabel: '设置偏好',
+    },
+    {
+      label: '执行首次扫描',
+      description: '从 Product Hunt、GitHub 抓取并评分项目',
+      done: hasDeals,
+      action: onRunScan,
+      actionLabel: loading ? '扫描中...' : '开始扫描',
+    },
+  ];
+
+  // Find current step
+  const currentStep = steps.findIndex(s => !s.done);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8">
+      <div className="text-center mb-8">
+        <div className="text-4xl mb-3">🚀</div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">欢迎使用 DealFlow</h2>
+        <p className="text-gray-500">完成以下 3 步，开始你的 AI 投资助手之旅</p>
+      </div>
+
+      <div className="max-w-md mx-auto space-y-4">
+        {steps.map((step, i) => (
+          <div
+            key={i}
+            className={`flex items-start gap-4 p-4 rounded-lg border transition-all ${
+              step.done
+                ? 'bg-green-50 border-green-200'
+                : i === currentStep
+                ? 'bg-indigo-50 border-indigo-200'
+                : 'bg-gray-50 border-gray-200 opacity-60'
+            }`}
+          >
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${
+              step.done
+                ? 'bg-green-500 text-white'
+                : i === currentStep
+                ? 'bg-indigo-500 text-white'
+                : 'bg-gray-300 text-white'
+            }`}>
+              {step.done ? '✓' : i + 1}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-gray-900 text-sm">{step.label}</div>
+              <div className="text-xs text-gray-500 mt-0.5">{step.description}</div>
+            </div>
+            {i === currentStep && !step.done && (
+              <button
+                onClick={step.action}
+                disabled={loading}
+                className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors shrink-0"
+              >
+                {step.actionLabel}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============ Deal Card with Accordion ============
+function DealCard({
+  deal,
+  feedback,
+  onFeedback,
+}: {
+  deal: Deal;
+  feedback: FeedbackSignal;
+  onFeedback: (signal: 'interested' | 'pass') => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
+      {/* Main row — always visible */}
+      <div className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-2 flex-wrap">
+              <span className="text-sm text-gray-400">{getSourceLabel(deal.source)}</span>
+              <a href={deal.url} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors truncate">
+                {deal.name}
+              </a>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium border shrink-0 ${getVerdictColor(deal.verdict)}`}>
+                {getVerdictLabel(deal.verdict)}
+              </span>
+            </div>
+            <p className="text-gray-600 mb-2 line-clamp-2">{deal.tagline}</p>
+            {deal.one_liner && (
+              <p className="text-sm text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg mb-3">
+                💡 {deal.one_liner}
+              </p>
+            )}
+            <div className="flex items-center gap-4 text-xs text-gray-400">
+              <span className="bg-gray-100 px-2 py-1 rounded">{deal.category}</span>
+              {deal.metrics && <span>{deal.metrics}</span>}
+              {/* Expand toggle */}
+              {(deal.strengths?.length > 0 || deal.risks?.length > 0 || deal.suggested_action) && (
+                <button
+                  onClick={() => setExpanded(!expanded)}
+                  className="text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+                >
+                  {expanded ? '收起详情 ▲' : '展开详情 ▼'}
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="ml-6 flex flex-col items-center gap-2 shrink-0">
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold ${
+              deal.score >= 80 ? 'bg-green-100 text-green-700' :
+              deal.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
+              'bg-gray-100 text-gray-500'
+            }`}>
+              {deal.score || '—'}
+            </div>
+            <span className="text-xs text-gray-400 block">评分</span>
+            {/* Feedback buttons */}
+            <div className="flex gap-1 mt-1">
+              <button
+                onClick={() => onFeedback('interested')}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
+                  feedback === 'interested'
+                    ? 'bg-green-100 text-green-600 ring-2 ring-green-300'
+                    : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-600'
+                }`}
+                title="感兴趣"
+              >
+                👍
+              </button>
+              <button
+                onClick={() => onFeedback('pass')}
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
+                  feedback === 'pass'
+                    ? 'bg-red-100 text-red-600 ring-2 ring-red-300'
+                    : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600'
+                }`}
+                title="跳过"
+              >
+                👎
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Accordion detail panel */}
+      {expanded && (
+        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/50 rounded-b-xl">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Strengths */}
+            {deal.strengths?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">✅ 优势</h4>
+                <ul className="space-y-1">
+                  {deal.strengths.map((s, i) => (
+                    <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
+                      <span className="text-green-500 mt-0.5 shrink-0">•</span>
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Risks */}
+            {deal.risks?.length > 0 && (
+              <div>
+                <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">⚠️ 风险</h4>
+                <ul className="space-y-1">
+                  {deal.risks.map((r, i) => (
+                    <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
+                      <span className="text-red-500 mt-0.5 shrink-0">•</span>
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {/* Suggested Action */}
+            {deal.suggested_action && (
+              <div>
+                <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">🎯 建议动作</h4>
+                <p className="text-sm text-gray-700">{deal.suggested_action}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============ Helper Functions ============
+function getVerdictLabel(verdict: string) {
+  switch (verdict) {
+    case 'STRONG_MATCH': return '强匹配';
+    case 'MODERATE_MATCH': return '中等匹配';
+    case 'WEAK_MATCH': return '弱匹配';
+    case 'PASS': return '不匹配';
+    default: return verdict;
+  }
+}
+
+function getVerdictColor(verdict: string) {
+  switch (verdict) {
+    case 'STRONG_MATCH': return 'bg-green-100 text-green-800 border-green-200';
+    case 'MODERATE_MATCH': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+    case 'WEAK_MATCH': return 'bg-gray-100 text-gray-600 border-gray-200';
+    default: return 'bg-red-50 text-red-600 border-red-200';
+  }
+}
+
+function getSourceLabel(source: string) {
+  switch (source) {
+    case 'product_hunt': return '🚀 PH';
+    case 'github': return '⭐ GH';
+    case 'crunchbase': return '💰 CB';
+    case 'twitter': return '🐦 X';
+    default: return '📄';
+  }
+}
+
+// ============ Brief Section Renderer ============
+function BriefSection({ content }: { content: string }) {
+  // Parse brief into sections by ## headings or numbered items
+  const sections = parseBriefSections(content);
+
+  if (sections.length === 0) {
+    return (
+      <div
+        className="prose prose-sm max-w-none text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_hr]:my-4 [&_hr]:border-gray-200"
+        dangerouslySetInnerHTML={{ __html: renderMarkdown(content) }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section, i) => (
+        <div key={i} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+          {section.title && (
+            <h3 className="text-sm font-semibold text-gray-900 mb-2">{section.title}</h3>
+          )}
+          <div
+            className="text-sm text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(section.body) }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function parseBriefSections(content: string): { title: string; body: string }[] {
+  const lines = content.split('\n');
+  const sections: { title: string; body: string }[] = [];
+  let currentTitle = '';
+  let currentBody: string[] = [];
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^##\s+(.+)$/);
+    const numberedMatch = line.match(/^(\d+)\.\s+\*\*(.+?)\*\*(.*)$/);
+
+    if (headingMatch) {
+      if (currentTitle || currentBody.length > 0) {
+        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
+      }
+      currentTitle = headingMatch[1];
+      currentBody = [];
+    } else if (numberedMatch && currentBody.length === 0 && !currentTitle) {
+      // Top-level numbered item as its own section
+      if (sections.length > 0 || currentBody.length > 0) {
+        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
+        currentBody = [];
+      }
+      currentTitle = `${numberedMatch[1]}. ${numberedMatch[2]}`;
+      currentBody = numberedMatch[3] ? [numberedMatch[3].trim()] : [];
+    } else if (line.match(/^---$/)) {
+      if (currentTitle || currentBody.length > 0) {
+        sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
+      }
+      currentTitle = '';
+      currentBody = [];
+    } else {
+      currentBody.push(line);
+    }
+  }
+
+  if (currentTitle || currentBody.length > 0) {
+    sections.push({ title: currentTitle, body: currentBody.join('\n').trim() });
+  }
+
+  // Filter out empty sections
+  return sections.filter(s => s.title || s.body.trim());
+}
+
+function renderMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/^---$/gm, '<hr class="my-4 border-gray-200" />')
+    .replace(/^## (.+)$/gm, '<h3 class="text-base font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
+    .replace(/^(\d+)\. (.+)$/gm, '<div class="mt-2"><span class="font-medium text-gray-900">$1. $2</span></div>')
+    .replace(/\n/g, '<br />');
+}
+
+// ============ Main Dashboard ============
 export default function Dashboard() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [brief, setBrief] = useState<Brief | null>(null);
   const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [apiConfig, setApiConfig] = useState<ApiConfig | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [scanStatus, setScanStatus] = useState<string>('');
   const [scanError, setScanError] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'brief' | 'deals' | 'settings' | 'api'>('brief');
   const [feedbackMap, setFeedbackMap] = useState<Record<string, FeedbackSignal>>({});
+
+  // Filtering
+  const [verdictFilter, setVerdictFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
 
   // 偏好编辑表单
   const [editSectors, setEditSectors] = useState('');
@@ -69,11 +462,12 @@ export default function Dashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [dealsRes, briefRes, prefsRes, configRes] = await Promise.all([
+      const [dealsRes, briefRes, prefsRes, configRes, feedbackRes] = await Promise.all([
         fetch('/api/deals').then(r => r.json()),
         fetch('/api/brief').then(r => r.json()),
         fetch('/api/preferences').then(r => r.json()),
         fetch('/api/config').then(r => r.json()),
+        fetch('/api/feedback').then(r => r.json()),
       ]);
       if (dealsRes.success) setDeals(dealsRes.deals || []);
       if (briefRes.success) setBrief(briefRes.brief);
@@ -90,14 +484,22 @@ export default function Dashboard() {
         setBaseUrlInput(configRes.config.deepseekBaseUrl);
         setModelInput(configRes.config.deepseekModel);
       }
+      if (feedbackRes.success && feedbackRes.feedbackMap) {
+        setFeedbackMap(feedbackRes.feedbackMap);
+      }
     } catch (e) {
       console.error('数据加载失败:', e);
+    } finally {
+      setInitialLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Determine if onboarding should show
+  const showOnboarding = !initialLoading && (!apiConfig?.deepseekConfigured || deals.length === 0);
 
   async function runScan() {
     if (!apiConfig?.deepseekConfigured) {
@@ -167,7 +569,6 @@ export default function Dashboard() {
     setConfigSaving(false);
   }
 
-  // 保存投资偏好
   async function savePreferences() {
     setPrefsSaving(true);
     setPrefsMsg('');
@@ -197,8 +598,9 @@ export default function Dashboard() {
     setPrefsSaving(false);
   }
 
-  // 发送反馈（飞轮入口）
   async function sendFeedback(dealId: string, signal: 'interested' | 'pass') {
+    // Optimistic update
+    setFeedbackMap(prev => ({ ...prev, [dealId]: signal }));
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -206,15 +608,15 @@ export default function Dashboard() {
         body: JSON.stringify({ dealId, signal }),
       });
       const data = await res.json();
-      if (data.success) {
-        setFeedbackMap(prev => ({ ...prev, [dealId]: signal }));
+      if (!data.success) {
+        // Revert on failure
+        setFeedbackMap(prev => ({ ...prev, [dealId]: null }));
       }
-    } catch (e) {
-      console.error('反馈提交失败:', e);
+    } catch {
+      setFeedbackMap(prev => ({ ...prev, [dealId]: null }));
     }
   }
 
-  // 极简事件追踪
   function track(eventType: string, eventData?: Record<string, unknown>) {
     fetch('/api/events', {
       method: 'POST',
@@ -223,51 +625,12 @@ export default function Dashboard() {
     }).catch(() => {});
   }
 
-  // 简易 Markdown → HTML 渲染（处理 brief 中的 ** 和 --- 等）
-  function renderMarkdown(text: string): string {
-    return text
-      // 加粗 **text**
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      // 斜体 *text*
-      .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
-      // 分割线 ---
-      .replace(/^---$/gm, '<hr class="my-4 border-gray-200" />')
-      // 标题行（简单处理 ## 开头）
-      .replace(/^## (.+)$/gm, '<h3 class="text-base font-semibold text-gray-900 mt-4 mb-2">$1</h3>')
-      // 编号列表项加粗标题部分
-      .replace(/^(\d+)\. (.+)$/gm, '<div class="mt-3"><span class="font-medium text-gray-900">$1. $2</span></div>')
-      // 普通换行
-      .replace(/\n/g, '<br />');
-  }
-
-  function getVerdictLabel(verdict: string) {
-    switch (verdict) {
-      case 'STRONG_MATCH': return '强匹配';
-      case 'MODERATE_MATCH': return '中等匹配';
-      case 'WEAK_MATCH': return '弱匹配';
-      case 'PASS': return '不匹配';
-      default: return verdict;
-    }
-  }
-
-  function getVerdictColor(verdict: string) {
-    switch (verdict) {
-      case 'STRONG_MATCH': return 'bg-green-100 text-green-800 border-green-200';
-      case 'MODERATE_MATCH': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'WEAK_MATCH': return 'bg-gray-100 text-gray-600 border-gray-200';
-      default: return 'bg-red-50 text-red-600 border-red-200';
-    }
-  }
-
-  function getSourceLabel(source: string) {
-    switch (source) {
-      case 'product_hunt': return '🚀 Product Hunt';
-      case 'github': return '⭐ GitHub';
-      case 'crunchbase': return '💰 Crunchbase';
-      case 'twitter': return '🐦 Twitter';
-      default: return '📄 其他';
-    }
-  }
+  // Filtered deals
+  const filteredDeals = deals.filter(deal => {
+    if (verdictFilter !== 'all' && deal.verdict !== verdictFilter) return false;
+    if (sourceFilter !== 'all' && deal.source !== sourceFilter) return false;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -341,7 +704,19 @@ export default function Dashboard() {
         {/* 每日简报 */}
         {activeTab === 'brief' && (
           <div className="space-y-6">
-            {brief ? (
+            {initialLoading ? (
+              <SkeletonBrief />
+            ) : showOnboarding && !brief ? (
+              <OnboardingStepper
+                apiConfigured={!!apiConfig?.deepseekConfigured}
+                hasPreferences={!!preferences}
+                hasDeals={deals.length > 0}
+                onGoToApi={() => setActiveTab('api')}
+                onGoToPrefs={() => setActiveTab('settings')}
+                onRunScan={runScan}
+                loading={loading}
+              />
+            ) : brief ? (
               <div className="bg-white rounded-xl border border-gray-200 p-8">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-semibold text-gray-900">今日投资简报</h2>
@@ -351,28 +726,19 @@ export default function Dashboard() {
                     <span>{new Date(brief.generatedAt).toLocaleDateString('zh-CN')}</span>
                   </div>
                 </div>
-                <div
-                  className="prose prose-sm max-w-none text-gray-700 [&_strong]:font-semibold [&_strong]:text-gray-900 [&_hr]:my-4 [&_hr]:border-gray-200"
-                  dangerouslySetInnerHTML={{ __html: renderMarkdown(brief.content) }}
-                />
+                <BriefSection content={brief.content} />
               </div>
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="text-4xl mb-4">📭</div>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">暂无简报</h3>
-                <p className="text-gray-500 mb-6">
-                  {apiConfig?.deepseekConfigured
-                    ? '点击「执行每日扫描」抓取项目并生成你的第一份投资简报。'
-                    : '请先前往「API 配置」设置 DeepSeek API Key，然后执行扫描。'}
-                </p>
+                <p className="text-gray-500 mb-6">点击「执行每日扫描」生成你的第一份投资简报。</p>
                 <button
-                  onClick={() => apiConfig?.deepseekConfigured ? runScan() : setActiveTab('api')}
+                  onClick={runScan}
                   disabled={loading}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
-                  {apiConfig?.deepseekConfigured
-                    ? (loading ? '扫描中...' : '生成第一份简报')
-                    : '前往配置 API'}
+                  {loading ? '扫描中...' : '生成第一份简报'}
                 </button>
               </div>
             )}
@@ -382,69 +748,67 @@ export default function Dashboard() {
         {/* 项目管线 */}
         {activeTab === 'deals' && (
           <div className="space-y-4">
-            {deals.length > 0 ? (
-              deals.map(deal => (
-                <div key={deal.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-sm text-gray-400">{getSourceLabel(deal.source)}</span>
-                        <a href={deal.url} target="_blank" rel="noopener noreferrer" className="text-lg font-semibold text-gray-900 hover:text-indigo-600 transition-colors">
-                          {deal.name}
-                        </a>
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ${getVerdictColor(deal.verdict)}`}>
-                          {getVerdictLabel(deal.verdict)}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 mb-3">{deal.tagline}</p>
-                      {deal.one_liner && (
-                        <p className="text-sm text-indigo-700 bg-indigo-50 px-3 py-2 rounded-lg mb-3">
-                          💡 {deal.one_liner}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-4 text-xs text-gray-400">
-                        <span className="bg-gray-100 px-2 py-1 rounded">{deal.category}</span>
-                        {deal.metrics && <span>{deal.metrics}</span>}
-                      </div>
-                    </div>
-                    <div className="ml-6 flex flex-col items-center gap-2">
-                      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold ${
-                        deal.score >= 80 ? 'bg-green-100 text-green-700' :
-                        deal.score >= 60 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-gray-100 text-gray-500'
-                      }`}>
-                        {deal.score || '—'}
-                      </div>
-                      <span className="text-xs text-gray-400 block">评分</span>
-                      {/* 👍/👎 反馈按钮 — 飞轮入口 */}
-                      <div className="flex gap-1 mt-1">
-                        <button
-                          onClick={() => { sendFeedback(deal.id, 'interested'); track('feedback_interested', { dealId: deal.id }); }}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
-                            feedbackMap[deal.id] === 'interested'
-                              ? 'bg-green-100 text-green-600 ring-2 ring-green-300'
-                              : 'bg-gray-50 text-gray-400 hover:bg-green-50 hover:text-green-600'
-                          }`}
-                          title="感兴趣"
-                        >
-                          👍
-                        </button>
-                        <button
-                          onClick={() => { sendFeedback(deal.id, 'pass'); track('feedback_pass', { dealId: deal.id }); }}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-all ${
-                            feedbackMap[deal.id] === 'pass'
-                              ? 'bg-red-100 text-red-600 ring-2 ring-red-300'
-                              : 'bg-gray-50 text-gray-400 hover:bg-red-50 hover:text-red-600'
-                          }`}
-                          title="跳过"
-                        >
-                          👎
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+            {initialLoading ? (
+              <>
+                <SkeletonCard />
+                <SkeletonCard />
+                <SkeletonCard />
+              </>
+            ) : deals.length > 0 ? (
+              <>
+                {/* Filter bar */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-gray-500 font-medium">筛选：</span>
+                  <select
+                    value={verdictFilter}
+                    onChange={e => setVerdictFilter(e.target.value)}
+                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  >
+                    <option value="all">全部评级</option>
+                    <option value="STRONG_MATCH">强匹配</option>
+                    <option value="MODERATE_MATCH">中等匹配</option>
+                    <option value="WEAK_MATCH">弱匹配</option>
+                    <option value="PASS">不匹配</option>
+                  </select>
+                  <select
+                    value={sourceFilter}
+                    onChange={e => setSourceFilter(e.target.value)}
+                    className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
+                  >
+                    <option value="all">全部来源</option>
+                    <option value="product_hunt">Product Hunt</option>
+                    <option value="github">GitHub</option>
+                  </select>
+                  <span className="text-xs text-gray-400 ml-auto">
+                    显示 {filteredDeals.length} / {deals.length} 个项目
+                  </span>
                 </div>
-              ))
+
+                {/* Deal list */}
+                {filteredDeals.length > 0 ? (
+                  filteredDeals.map(deal => (
+                    <DealCard
+                      key={deal.id}
+                      deal={deal}
+                      feedback={feedbackMap[deal.id] || null}
+                      onFeedback={(signal) => {
+                        sendFeedback(deal.id, signal);
+                        track(`feedback_${signal}`, { dealId: deal.id });
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+                    <p className="text-gray-500">没有符合筛选条件的项目</p>
+                    <button
+                      onClick={() => { setVerdictFilter('all'); setSourceFilter('all'); }}
+                      className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      清除筛选
+                    </button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="text-4xl mb-4">🎯</div>
@@ -462,7 +826,7 @@ export default function Dashboard() {
             <p className="text-sm text-gray-500 mb-6">点击选项快速选择，也可以在输入框中自定义补充。修改后点击保存即可生效。</p>
 
             <div className="space-y-6">
-              {/* 关注赛道 — 选项 + 自定义 */}
+              {/* 关注赛道 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">关注赛道</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -500,7 +864,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* 投资阶段 — 单选 + 自定义 */}
+              {/* 投资阶段 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">投资阶段</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -528,7 +892,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* 地域偏好 — 选项 + 自定义 */}
+              {/* 地域偏好 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">地域偏好</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -556,7 +920,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* 关注信号 — 多选 + 自定义 */}
+              {/* 关注信号 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">关注信号</label>
                 <div className="flex flex-wrap gap-2 mb-2">
