@@ -5,7 +5,7 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
-import { DealCandidate, DealScore, InvestorPreferences } from './deepseek';
+import { DealCandidate, DealScore, InvestorPreferences } from './types';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'dealflow.db');
 
@@ -285,6 +285,66 @@ export function getAllFeedback(): Record<string, 'interested' | 'pass'> {
     result[row.deal_id] = row.signal;
   }
   return result;
+}
+
+// ============ Feedback Patterns (飞轮闭环) ============
+/**
+ * 从历史反馈中提取投资人偏好模式，注入 scoring prompt
+ * 例如："用户对 AI/ML 赛道的项目倾向于 interested（5/6 次）"
+ */
+export function getFeedbackPatterns(): string[] {
+  const rows = getDB().prepare(`
+    SELECT d.category, d.source, ds.verdict, df.signal, d.name
+    FROM deal_feedback df
+    JOIN deals d ON df.deal_id = d.id
+    LEFT JOIN deal_scores ds ON d.id = ds.deal_id
+    ORDER BY df.created_at DESC
+    LIMIT 50
+  `).all() as { category: string; source: string; verdict: string | null; signal: string; name: string }[];
+
+  if (rows.length < 3) return []; // 数据不足，不生成模式
+
+  const patterns: string[] = [];
+
+  // 按赛道统计偏好
+  const categoryStats: Record<string, { interested: number; pass: number }> = {};
+  for (const row of rows) {
+    if (!row.category) continue;
+    if (!categoryStats[row.category]) categoryStats[row.category] = { interested: 0, pass: 0 };
+    categoryStats[row.category][row.signal as 'interested' | 'pass']++;
+  }
+  for (const [cat, stats] of Object.entries(categoryStats)) {
+    const total = stats.interested + stats.pass;
+    if (total >= 2) {
+      if (stats.interested > stats.pass) {
+        patterns.push(`用户对「${cat}」赛道偏好明显（${stats.interested}/${total} 标记为感兴趣）`);
+      } else if (stats.pass > stats.interested) {
+        patterns.push(`用户对「${cat}」赛道兴趣较低（${stats.pass}/${total} 标记为跳过）`);
+      }
+    }
+  }
+
+  // 按来源统计
+  const sourceStats: Record<string, { interested: number; pass: number }> = {};
+  for (const row of rows) {
+    if (!row.source) continue;
+    if (!sourceStats[row.source]) sourceStats[row.source] = { interested: 0, pass: 0 };
+    sourceStats[row.source][row.signal as 'interested' | 'pass']++;
+  }
+  for (const [src, stats] of Object.entries(sourceStats)) {
+    const total = stats.interested + stats.pass;
+    if (total >= 2 && stats.interested > stats.pass) {
+      patterns.push(`来自「${src}」的项目更受用户青睐（${stats.interested}/${total}）`);
+    }
+  }
+
+  // 评分校准：用户标记 interested 但系统评分低的情况
+  const miscalibrated = rows.filter(r => r.signal === 'interested' && r.verdict === 'PASS');
+  if (miscalibrated.length >= 2) {
+    patterns.push(`注意：用户对 ${miscalibrated.length} 个被系统评为 PASS 的项目表示了兴趣，请适当放宽评分标准`);
+  }
+
+  return patterns;
 }
 
 // ============ Event Tracking (极简埋点) ============

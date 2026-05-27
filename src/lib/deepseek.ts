@@ -3,39 +3,9 @@
  * 用于 Deal 筛选和 Brief 生成
  */
 
-// ============ Types ============
-export interface DealCandidate {
-  id: string;
-  name: string;
-  tagline: string;
-  description: string;
-  category: string;
-  source: 'product_hunt' | 'github' | 'crunchbase' | 'twitter';
-  url: string;
-  metrics?: string;
-  timestamp: string;
-}
-
-export interface InvestorPreferences {
-  sectors: string[];
-  stage: string;
-  geography: string;
-  signals: string[];
-}
-
-export interface DealScore {
-  score: number;
-  verdict: 'STRONG_MATCH' | 'MODERATE_MATCH' | 'WEAK_MATCH' | 'PASS';
-  oneLiner: string;
-  strengths: string[];
-  risks: string[];
-  suggestedAction: string;
-}
-
-export interface ScoredDeal {
-  deal: DealCandidate;
-  score: DealScore;
-}
+import { getFeedbackPatterns } from './db';
+export type { DealCandidate, InvestorPreferences, DealScore, ScoredDeal } from './types';
+import type { DealCandidate, InvestorPreferences, DealScore, ScoredDeal } from './types';
 
 // ============ Config ============
 import { getConfig, isApiConfigured } from './config';
@@ -88,14 +58,21 @@ export async function chat(messages: Message[], temperature = 0.7): Promise<stri
 }
 
 // ============ Deal Scoring ============
+
 export async function scoreDeal(deal: DealCandidate, preferences: InvestorPreferences): Promise<DealScore> {
+  // Feedback loop: inject learned patterns from user's past 👍/👎
+  const patterns = getFeedbackPatterns();
+  const feedbackContext = patterns.length > 0
+    ? `\n\n投资人历史反馈模式（请据此调整评分权重）：\n${patterns.map(p => `- ${p}`).join('\n')}`
+    : '';
+
   const prompt = `你是一位经验丰富的 VC 分析师。请根据投资人的偏好，对以下项目进行评分和分析。
 
 投资人偏好：
 - 关注赛道：${preferences.sectors.join(', ')}
 - 投资阶段：${preferences.stage}
 - 地域偏好：${preferences.geography}
-- 关注信号：${preferences.signals.join(', ')}
+- 关注信号：${preferences.signals.join(', ')}${feedbackContext}
 
 项目信息：
 - 名称：${deal.name}
