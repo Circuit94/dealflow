@@ -5,17 +5,20 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { DealCard } from '@/components/DealCard';
 import { BriefSection } from '@/components/BriefSection';
 import { FilterBar } from '@/components/FilterBar';
-import { OnboardingStepper } from '@/components/OnboardingStepper';
+// OnboardingStepper removed — we now always show content (demo or real)
 import { PreferencesForm } from '@/components/PreferencesForm';
 import { ApiConfigForm } from '@/components/ApiConfigForm';
 import { SkeletonCard, SkeletonBrief } from '@/components/Skeleton';
+import { I18nProvider, useI18n } from '@/lib/i18n';
 
-// Wrap in Suspense for useSearchParams
+// Wrap in Suspense + I18nProvider
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><span className="text-gray-400">加载中...</span></div>}>
-      <Dashboard />
-    </Suspense>
+    <I18nProvider>
+      <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><span className="text-gray-400">Loading...</span></div>}>
+        <Dashboard />
+      </Suspense>
+    </I18nProvider>
   );
 }
 
@@ -71,6 +74,7 @@ type TabKey = 'brief' | 'deals' | 'settings' | 'api';
 
 // ============ Main Dashboard ============
 function Dashboard() {
+  const { t, locale, setLocale } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -154,37 +158,127 @@ function Dashboard() {
     fetchData();
   }, [fetchData]);
 
-  // ============ Actions ============
-  const showOnboarding = !initialLoading && (!apiConfig?.deepseekConfigured || deals.length === 0);
+  // ============ Demo Data (when API not configured and no real data) ============
+  const isDemo = !initialLoading && !apiConfig?.deepseekConfigured && deals.length === 0;
 
+  const demoDeals: Deal[] = useMemo(() => [
+    {
+      id: 'demo-1',
+      name: 'Raycast',
+      tagline: 'A blazingly fast, totally extendable launcher for macOS',
+      category: 'Developer Tools',
+      source: 'product_hunt',
+      url: 'https://raycast.com',
+      metrics: '50K+ DAU, $30M Series B',
+      score: 92,
+      verdict: 'STRONG_MATCH',
+      one_liner: 'Best-in-class developer productivity tool with explosive community growth',
+      strengths: ['Massive developer community', 'Strong retention metrics', 'Extensible platform play'],
+      risks: ['macOS only limits TAM', 'Competing with Spotlight/Alfred'],
+      suggested_action: 'Request intro via AngelList — round closing in 2 weeks',
+    },
+    {
+      id: 'demo-2',
+      name: 'Unkey',
+      tagline: 'Open source API key management and rate limiting',
+      category: 'Developer Tools',
+      source: 'github',
+      url: 'https://unkey.dev',
+      metrics: '3.2K GitHub stars, 40% MoM growth',
+      score: 78,
+      verdict: 'MODERATE_MATCH',
+      one_liner: 'Solving API auth infra pain — strong open-source traction',
+      strengths: ['Open-source community moat', 'Clear monetization path', 'Repeat founder'],
+      risks: ['Early revenue stage', 'Crowded API tooling space'],
+      suggested_action: 'Monitor for 2 more weeks — watch star velocity',
+    },
+    {
+      id: 'demo-3',
+      name: 'Trigger.dev',
+      tagline: 'The open source background jobs framework for TypeScript',
+      category: 'Developer Tools',
+      source: 'github',
+      url: 'https://trigger.dev',
+      metrics: '5.8K stars, YC W23, $3M seed',
+      score: 85,
+      verdict: 'STRONG_MATCH',
+      one_liner: 'Background jobs is a $2B+ market — this team has the best DX',
+      strengths: ['YC backed', 'TypeScript-first in growing ecosystem', 'Strong DX focus'],
+      risks: ['Inngest is well-funded competitor', 'Open-source monetization risk'],
+      suggested_action: 'Reach out to founder on Twitter — active and responsive',
+    },
+    {
+      id: 'demo-4',
+      name: 'Pika',
+      tagline: 'AI video generation platform',
+      category: 'AI/ML',
+      source: 'crunchbase',
+      url: 'https://pika.art',
+      metrics: '$80M Series B, 1M+ users',
+      score: 45,
+      verdict: 'PASS',
+      one_liner: 'Strong product but valuation too high for angel check size',
+      strengths: ['Viral consumer product', 'Top AI research team'],
+      risks: ['$600M valuation — not angel-stage', 'Runway/Sora competition'],
+      suggested_action: 'Pass — monitor for secondary opportunities',
+    },
+    {
+      id: 'demo-5',
+      name: 'Dub.co',
+      tagline: 'Open-source link management for modern marketing teams',
+      category: 'SaaS',
+      source: 'product_hunt',
+      url: 'https://dub.co',
+      metrics: '12K stars, $2M ARR, bootstrapped → raising',
+      score: 71,
+      verdict: 'MODERATE_MATCH',
+      one_liner: 'Bitly killer with open-source distribution — impressive solo founder execution',
+      strengths: ['Revenue-generating before raise', 'Open-source community', 'Solo founder efficiency'],
+      risks: ['Link shortening is commodity', 'Bitly has enterprise lock-in'],
+      suggested_action: 'Worth a 30-min call — founder is raising seed now',
+    },
+  ], []);
+
+  const demoBrief: Brief = useMemo(() => ({
+    content: `## Daily Deal Brief — Demo\n\nToday's scan found **5 projects** matching your thesis across Developer Tools, AI/ML, and SaaS.\n\n### 🔥 Top Picks\n\n**Raycast** (Score: 92) — Blazingly fast macOS launcher with 50K+ DAU. The extensible platform play creates a developer ecosystem moat. Round closing soon.\n\n**Trigger.dev** (Score: 85) — YC W23 background jobs framework. TypeScript-first positioning in a $2B+ market with best-in-class DX.\n\n### 👀 Worth Watching\n\n**Unkey** (Score: 78) — Open-source API key management gaining traction (3.2K stars, 40% MoM). Monitor star velocity.\n\n**Dub.co** (Score: 71) — Bootstrapped to $2M ARR, now raising seed. Impressive solo founder execution.\n\n### ⏭️ Passed\n\n**Pika** (Score: 45) — Great product but $600M valuation is beyond angel range.\n\n---\n*This is demo data. Configure your DeepSeek API key to get real results from live sources.*`,
+    dealCount: 5,
+    topScore: 92,
+    generatedAt: new Date().toISOString(),
+  }), []);
+
+  // Use demo data when no real data available
+  const effectiveDeals = isDemo ? demoDeals : deals;
+  const effectiveBrief = isDemo ? demoBrief : brief;
+
+  // ============ Actions ============
   async function runScan() {
     if (!apiConfig?.deepseekConfigured) {
-      setScanError('请先在「API 配置」中设置 DeepSeek API Key');
+      setScanError(t('configureApiFirst'));
       setActiveTab('api');
       return;
     }
 
     setLoading(true);
-    setScanStatus('正在从 Product Hunt、GitHub 抓取项目...');
+    setScanStatus(t('scanStatusMsg'));
     setScanError('');
 
     try {
       const dealsRes = await fetch('/api/deals', { method: 'POST' });
       const dealsData = await dealsRes.json();
-      if (!dealsData.success) throw new Error(dealsData.error || '抓取失败');
+      if (!dealsData.success) throw new Error(dealsData.error || 'Scan failed');
 
-      setScanStatus(`已评分 ${dealsData.total} 个项目，正在生成 Brief...`);
+      setScanStatus(t('scanScoredMsg', { count: dealsData.total }));
 
       const briefRes = await fetch('/api/brief', { method: 'POST' });
       const briefData = await briefRes.json();
-      if (!briefData.success) throw new Error(briefData.error || 'Brief 生成失败');
+      if (!briefData.success) throw new Error(briefData.error || 'Brief generation failed');
 
       setScanStatus('');
       await fetchData();
       setActiveTab('brief');
       track('scan_completed', { dealCount: dealsData.total });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : '未知错误';
+      const msg = e instanceof Error ? e.message : 'Unknown error';
       setScanError(msg);
       setScanStatus('');
     }
@@ -244,12 +338,12 @@ function Dashboard() {
   // ============ Filtered & Sorted Deals ============
   // Extract unique categories for filter dropdown
   const categories = useMemo(() => {
-    const cats = [...new Set(deals.map(d => d.category).filter(Boolean))];
+    const cats = [...new Set(effectiveDeals.map(d => d.category).filter(Boolean))];
     return cats.sort();
-  }, [deals]);
+  }, [effectiveDeals]);
 
   const filteredDeals = useMemo(() => {
-    let result = deals.filter(deal => {
+    let result = effectiveDeals.filter(deal => {
       if (verdictFilter !== 'all' && deal.verdict !== verdictFilter) return false;
       if (sourceFilter !== 'all' && deal.source !== sourceFilter) return false;
       if (categoryFilter !== 'all' && deal.category !== categoryFilter) return false;
@@ -267,17 +361,19 @@ function Dashboard() {
     });
 
     return result;
-  }, [deals, verdictFilter, sourceFilter, categoryFilter, sortBy]);
+  }, [effectiveDeals, verdictFilter, sourceFilter, categoryFilter, sortBy]);
 
-  const dealNames = useMemo(() => deals.map(d => d.name), [deals]);
+  const dealNames = useMemo(() => effectiveDeals.map(d => d.name), [effectiveDeals]);
 
   // ============ Render ============
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Demo Banner */}
-      {!apiConfig?.deepseekConfigured && deals.length > 0 && (
+      {isDemo && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 sm:px-6 py-2 text-center text-sm text-amber-800">
-          📋 You&apos;re viewing <strong>demo data</strong>. Configure your API key in the API tab to get live results from real sources.
+          📋 {locale === 'zh'
+            ? <>您正在查看<strong>演示数据</strong>。请在&quot;API&quot;标签页中配置 API 密钥以获取实时数据。</>
+            : <>You&apos;re viewing <strong>demo data</strong>. Configure your API key in the &quot;API&quot; tab to get live results from real sources.</>}
         </div>
       )}
 
@@ -288,18 +384,26 @@ function Dashboard() {
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white text-sm font-bold">D</span>
             </div>
-            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">DealFlow</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">{t('appName')}</h1>
             {apiConfig?.deepseekConfigured && (
-              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">Connected</span>
+              <span className="text-xs bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-medium hidden sm:inline">{t('connected')}</span>
             )}
           </div>
-          <button
-            onClick={runScan}
-            disabled={loading}
-            className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? '⏳ Scanning...' : '🔍 Daily Scan'}
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setLocale(locale === 'en' ? 'zh' : 'en')}
+              className="px-2 sm:px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            >
+              {t('langSwitch')}
+            </button>
+            <button
+              onClick={runScan}
+              disabled={loading}
+              className="px-3 sm:px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs sm:text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? t('scanning') : t('dailyScan')}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -313,13 +417,13 @@ function Dashboard() {
           )}
           {scanError && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm flex items-center justify-between">
-              <span>❌ 扫描失败：{scanError}</span>
+              <span>❌ {scanError}</span>
               <button
                 onClick={runScan}
                 disabled={loading}
                 className="ml-3 px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-xs font-medium transition-colors shrink-0"
               >
-                重试
+                {t('retry')}
               </button>
             </div>
           )}
@@ -330,10 +434,10 @@ function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
         <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit overflow-x-auto">
           {([
-            { key: 'brief' as const, label: '📋 简报', labelFull: '📋 每日简报' },
-            { key: 'deals' as const, label: '🎯 管线', labelFull: '🎯 项目管线' },
-            { key: 'settings' as const, label: '⚙️ 偏好', labelFull: '⚙️ 投资偏好' },
-            { key: 'api' as const, label: '🔑 API', labelFull: '🔑 API 配置' },
+            { key: 'brief' as const, label: t('tabBrief'), labelFull: t('tabBriefFull') },
+            { key: 'deals' as const, label: t('tabPipeline'), labelFull: t('tabPipelineFull') },
+            { key: 'settings' as const, label: t('tabPrefs'), labelFull: t('tabPrefsFull') },
+            { key: 'api' as const, label: t('tabApi'), labelFull: t('tabApiFull') },
           ]).map(tab => (
             <button
               key={tab.key}
@@ -361,52 +465,42 @@ function Dashboard() {
           <div className="space-y-6">
             {initialLoading ? (
               <SkeletonBrief />
-            ) : showOnboarding && !brief ? (
-              <OnboardingStepper
-                apiConfigured={!!apiConfig?.deepseekConfigured}
-                hasPreferences={!!preferences}
-                hasDeals={deals.length > 0}
-                onGoToApi={() => setActiveTab('api')}
-                onGoToPrefs={() => setActiveTab('settings')}
-                onRunScan={runScan}
-                loading={loading}
-              />
-            ) : brief ? (
+            ) : effectiveBrief ? (
               <div className="bg-white rounded-xl border border-gray-200 p-6 sm:p-8">
                 <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-                  <h2 className="text-lg font-semibold text-gray-900">今日投资简报</h2>
+                  <h2 className="text-lg font-semibold text-gray-900">{t('todaysBrief')}</h2>
                   <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 flex-wrap">
-                    <span>分析了 {brief.dealCount} 个项目</span>
-                    <span>最高分：{brief.topScore}</span>
-                    <span>{new Date(brief.generatedAt).toLocaleDateString('zh-CN')}</span>
-                    {briefHistory.length > 1 && (
+                    <span>{t('projectsAnalyzed', { count: effectiveBrief.dealCount })}</span>
+                    <span>{t('topScore', { score: effectiveBrief.topScore })}</span>
+                    <span>{new Date(effectiveBrief.generatedAt).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US')}</span>
+                    {!isDemo && briefHistory.length > 1 && (
                       <button
                         onClick={() => setShowHistory(!showHistory)}
                         className="text-indigo-600 hover:text-indigo-700 font-medium"
                       >
-                        {showHistory ? '收起历史' : '往期简报 ▾'}
+                        {showHistory ? t('hideHistory') : t('pastBriefs')}
                       </button>
                     )}
                   </div>
                 </div>
 
                 {/* History selector */}
-                {showHistory && briefHistory.length > 1 && (
+                {!isDemo && showHistory && briefHistory.length > 1 && (
                   <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">历史简报</h4>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{t('pastBriefsTitle')}</h4>
                     <div className="space-y-2 max-h-48 overflow-y-auto">
                       {briefHistory.map(b => (
                         <button
                           key={b.id}
                           onClick={() => loadBrief(b.id)}
                           className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
-                            brief.id === b.id
+                            effectiveBrief.id === b.id
                               ? 'bg-indigo-50 text-indigo-700 font-medium'
                               : 'hover:bg-gray-100 text-gray-700'
                           }`}
                         >
-                          <span>{new Date(b.generatedAt).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
-                          <span className="text-xs text-gray-400">{b.dealCount} 项目 · 最高 {b.topScore} 分</span>
+                          <span>{new Date(b.generatedAt).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
+                          <span className="text-xs text-gray-400">{b.dealCount} projects · Top {b.topScore}</span>
                         </button>
                       ))}
                     </div>
@@ -414,7 +508,7 @@ function Dashboard() {
                 )}
 
                 <BriefSection
-                  content={brief.content}
+                  content={effectiveBrief.content}
                   dealNames={dealNames}
                   onDealClick={handleDealClick}
                 />
@@ -422,14 +516,14 @@ function Dashboard() {
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="text-4xl mb-4">📭</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">暂无简报</h3>
-                <p className="text-gray-500 mb-6">点击「每日扫描」生成你的第一份投资简报。</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('noBriefYet')}</h3>
+                <p className="text-gray-500 mb-6">{t('noBriefDesc')}</p>
                 <button
                   onClick={runScan}
                   disabled={loading}
                   className="px-6 py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                 >
-                  {loading ? '扫描中...' : '生成第一份简报'}
+                  {loading ? t('scanningEllipsis') : t('generateFirst')}
                 </button>
               </div>
             )}
@@ -445,7 +539,7 @@ function Dashboard() {
                 <SkeletonCard />
                 <SkeletonCard />
               </>
-            ) : deals.length > 0 ? (
+            ) : effectiveDeals.length > 0 ? (
               <>
                 <FilterBar
                   verdictFilter={verdictFilter}
@@ -456,7 +550,7 @@ function Dashboard() {
                   onSourceChange={setSourceFilter}
                   onCategoryChange={setCategoryFilter}
                   onSortChange={setSortBy}
-                  totalCount={deals.length}
+                  totalCount={effectiveDeals.length}
                   filteredCount={filteredDeals.length}
                   onClear={() => { setVerdictFilter('all'); setSourceFilter('all'); setCategoryFilter('all'); }}
                   categories={categories}
@@ -477,12 +571,12 @@ function Dashboard() {
                   ))
                 ) : (
                   <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-                    <p className="text-gray-500">没有符合筛选条件的项目</p>
+                    <p className="text-gray-500">{t('noMatchFilters')}</p>
                     <button
-                      onClick={() => { setVerdictFilter('all'); setSourceFilter('all'); }}
+                      onClick={() => { setVerdictFilter('all'); setSourceFilter('all'); setCategoryFilter('all'); }}
                       className="mt-3 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                     >
-                      清除筛选
+                      {t('clearFilters')}
                     </button>
                   </div>
                 )}
@@ -490,8 +584,8 @@ function Dashboard() {
             ) : (
               <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
                 <div className="text-4xl mb-4">🎯</div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">管线为空</h3>
-                <p className="text-gray-500">执行扫描后，这里会展示从 Product Hunt、GitHub 等来源发现并评分的项目。</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{t('pipelineEmpty')}</h3>
+                <p className="text-gray-500">{t('pipelineEmptyDesc')}</p>
               </div>
             )}
           </div>

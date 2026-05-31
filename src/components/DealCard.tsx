@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useI18n } from '@/lib/i18n';
 
 interface Deal {
   id: string;
@@ -19,25 +20,6 @@ interface Deal {
 }
 
 type FeedbackSignal = 'interested' | 'pass' | null;
-
-function getVerdictLabel(verdict: string) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return '强匹配';
-    case 'MODERATE_MATCH': return '中等匹配';
-    case 'WEAK_MATCH': return '弱匹配';
-    case 'PASS': return '不匹配';
-    default: return verdict;
-  }
-}
-
-function getVerdictColor(verdict: string) {
-  switch (verdict) {
-    case 'STRONG_MATCH': return 'bg-green-100 text-green-800 border-green-200';
-    case 'MODERATE_MATCH': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-    case 'WEAK_MATCH': return 'bg-gray-100 text-gray-600 border-gray-200';
-    default: return 'bg-red-50 text-red-600 border-red-200';
-  }
-}
 
 function getSourceLabel(source: string) {
   switch (source) {
@@ -60,6 +42,7 @@ export function DealCard({
   onFeedback: (signal: 'interested' | 'pass' | null) => void;
   highlighted?: boolean;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(highlighted || false);
   const [showScoreTooltip, setShowScoreTooltip] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -74,6 +57,25 @@ export function DealCard({
   }, [highlighted]);
 
   const hasDetails = (deal.strengths?.length > 0 || deal.risks?.length > 0 || deal.suggested_action);
+
+  function getVerdictLabel(verdict: string) {
+    switch (verdict) {
+      case 'STRONG_MATCH': return t('verdictStrong');
+      case 'MODERATE_MATCH': return t('verdictModerate');
+      case 'WEAK_MATCH': return t('verdictWeak');
+      case 'PASS': return t('verdictPass');
+      default: return verdict;
+    }
+  }
+
+  function getVerdictColor(verdict: string) {
+    switch (verdict) {
+      case 'STRONG_MATCH': return 'bg-green-100 text-green-800 border-green-200';
+      case 'MODERATE_MATCH': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'WEAK_MATCH': return 'bg-gray-100 text-gray-600 border-gray-200';
+      default: return 'bg-red-50 text-red-600 border-red-200';
+    }
+  }
 
   return (
     <div
@@ -111,7 +113,7 @@ export function DealCard({
                   onClick={() => setExpanded(!expanded)}
                   className="text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
                 >
-                  {expanded ? '收起详情 ▲' : '展开详情 ▼'}
+                  {expanded ? t('hideDetails') : t('showDetails')}
                 </button>
               )}
             </div>
@@ -134,16 +136,16 @@ export function DealCard({
               {showScoreTooltip && (
                 <div className="absolute right-0 top-full mt-2 w-48 bg-gray-900 text-white text-xs rounded-lg p-3 z-20 shadow-lg">
                   <div className="space-y-1">
-                    <div className="flex justify-between"><span className="text-green-300">80+</span><span>Strong Match</span></div>
-                    <div className="flex justify-between"><span className="text-yellow-300">60-79</span><span>Moderate Match</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">40-59</span><span>Weak Match</span></div>
-                    <div className="flex justify-between"><span className="text-red-300">&lt;40</span><span>Pass</span></div>
+                    <div className="flex justify-between"><span className="text-green-300">80+</span><span>{t('scoreStrong')}</span></div>
+                    <div className="flex justify-between"><span className="text-yellow-300">60-79</span><span>{t('scoreModerate')}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-400">40-59</span><span>{t('scoreWeak')}</span></div>
+                    <div className="flex justify-between"><span className="text-red-300">&lt;40</span><span>{t('scorePass')}</span></div>
                   </div>
                   <div className="absolute -top-1 right-4 w-2 h-2 bg-gray-900 rotate-45" />
                 </div>
               )}
             </div>
-            <span className="text-xs text-gray-400">评分</span>
+            <span className="text-xs text-gray-400">{t('score')}</span>
             {/* Feedback buttons — prominent, click again to cancel */}
             <div className="flex gap-1.5 mt-2">
               <button
@@ -153,7 +155,7 @@ export function DealCard({
                     ? 'bg-green-100 text-green-600 ring-2 ring-green-300 scale-110'
                     : 'bg-gray-100 text-gray-400 hover:bg-green-50 hover:text-green-600 hover:scale-105'
                 }`}
-                title={feedback === 'interested' ? 'Click to undo' : 'Interested'}
+                title={feedback === 'interested' ? t('clickToUndo') : t('interested')}
               >
                 👍
               </button>
@@ -164,13 +166,13 @@ export function DealCard({
                     ? 'bg-red-100 text-red-600 ring-2 ring-red-300 scale-110'
                     : 'bg-gray-100 text-gray-400 hover:bg-red-50 hover:text-red-600 hover:scale-105'
                 }`}
-                title={feedback === 'pass' ? 'Click to undo' : 'Pass'}
+                title={feedback === 'pass' ? t('clickToUndo') : t('pass')}
               >
                 👎
               </button>
             </div>
             {!feedback && (
-              <span className="text-xs text-gray-400 mt-1">Rate this</span>
+              <span className="text-xs text-gray-400 mt-1">{t('rateThis')}</span>
             )}
           </div>
         </div>
@@ -188,7 +190,7 @@ export function DealCard({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {deal.strengths?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">✅ 优势</h4>
+                  <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">{t('strengths')}</h4>
                   <ul className="space-y-1">
                     {deal.strengths.map((s, i) => (
                       <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
@@ -201,7 +203,7 @@ export function DealCard({
               )}
               {deal.risks?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">⚠️ 风险</h4>
+                  <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">{t('risks')}</h4>
                   <ul className="space-y-1">
                     {deal.risks.map((r, i) => (
                       <li key={i} className="text-sm text-gray-700 flex items-start gap-1.5">
@@ -214,7 +216,7 @@ export function DealCard({
               )}
               {deal.suggested_action && (
                 <div>
-                  <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">🎯 建议动作</h4>
+                  <h4 className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">{t('nextStep')}</h4>
                   <p className="text-sm text-gray-700">{deal.suggested_action}</p>
                 </div>
               )}
