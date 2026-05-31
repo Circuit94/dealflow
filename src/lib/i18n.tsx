@@ -109,34 +109,34 @@ const translations = {
     dailyScan: '🔍 每日扫描',
 
     // Tabs
-    tabBrief: '📋 简报',
-    tabBriefFull: '📋 每日简报',
-    tabPipeline: '🎯 管线',
-    tabPipelineFull: '🎯 项目管线',
+    tabBrief: '📋 发现',
+    tabBriefFull: '📋 今日发现',
+    tabPipeline: '🎯 项目',
+    tabPipelineFull: '🎯 项目列表',
     tabPrefs: '⚙️ 偏好',
     tabPrefsFull: '⚙️ 投资偏好',
     tabApi: '🔑 API',
     tabApiFull: '🔑 API 配置',
 
     // Brief tab
-    todaysBrief: '今日投资简报',
+    todaysBrief: '今日发现',
     projectsAnalyzed: '已分析 {count} 个项目',
     topScore: '最高分: {score}',
     hideHistory: '隐藏历史',
-    pastBriefs: '历史简报 ▾',
-    pastBriefsTitle: '历史简报',
+    pastBriefs: '历史记录 ▾',
+    pastBriefsTitle: '历史记录',
     projects: '个项目',
     top: '最高',
-    noBriefYet: '暂无简报',
-    noBriefDesc: '点击"每日扫描"生成您的第一份投资简报。',
-    generateFirst: '生成首份简报',
+    noBriefYet: '暂无发现',
+    noBriefDesc: '点击"每日扫描"开始发现并评估新项目。',
+    generateFirst: '开始扫描',
     scanningEllipsis: '扫描中...',
 
     // Pipeline tab
     noMatchFilters: '没有项目匹配当前筛选条件',
     clearFilters: '清除筛选',
-    pipelineEmpty: '管线为空',
-    pipelineEmptyDesc: '运行扫描以从 Product Hunt、GitHub 等来源发现并评分项目。',
+    pipelineEmpty: '暂无项目',
+    pipelineEmptyDesc: '点击"每日扫描"从 Product Hunt、GitHub 等来源发现并评分项目。',
 
     // Scan status
     scanStatusMsg: '正在扫描 Product Hunt、GitHub 的新项目...',

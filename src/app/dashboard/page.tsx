@@ -15,7 +15,7 @@ import { I18nProvider, useI18n } from '@/lib/i18n';
 export default function DashboardPage() {
   return (
     <I18nProvider>
-      <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><span className="text-gray-400">Loading...</span></div>}>
+      <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center"><span className="text-gray-400">加载中...</span></div>}>
         <Dashboard />
       </Suspense>
     </I18nProvider>
@@ -161,7 +161,83 @@ function Dashboard() {
   // ============ Demo Data (when API not configured and no real data) ============
   const isDemo = !initialLoading && !apiConfig?.deepseekConfigured && deals.length === 0;
 
-  const demoDeals: Deal[] = useMemo(() => [
+  const demoDeals: Deal[] = useMemo(() => locale === 'zh' ? [
+    {
+      id: 'demo-1',
+      name: 'Raycast',
+      tagline: '极速、可扩展的 macOS 启动器，开发者效率神器',
+      category: '开发者工具',
+      source: 'product_hunt',
+      url: 'https://raycast.com',
+      metrics: '5万+ 日活, B轮 $30M',
+      score: 92,
+      verdict: 'STRONG_MATCH',
+      one_liner: '顶级开发者效率工具，社区增长爆发式',
+      strengths: ['庞大的开发者社区', '留存指标优秀', '可扩展平台生态'],
+      risks: ['仅支持 macOS，限制市场规模', '与 Spotlight/Alfred 竞争'],
+      suggested_action: '通过 AngelList 请求介绍 — 本轮 2 周内关闭',
+    },
+    {
+      id: 'demo-2',
+      name: 'Unkey',
+      tagline: '开源 API 密钥管理与限流工具',
+      category: '开发者工具',
+      source: 'github',
+      url: 'https://unkey.dev',
+      metrics: '3.2K GitHub Stars, 月增长 40%',
+      score: 78,
+      verdict: 'MODERATE_MATCH',
+      one_liner: '解决 API 认证基础设施痛点，开源社区增长强劲',
+      strengths: ['开源社区护城河', '清晰的商业化路径', '连续创业者'],
+      risks: ['收入阶段较早', 'API 工具赛道拥挤'],
+      suggested_action: '继续观察 2 周 — 关注 Star 增速',
+    },
+    {
+      id: 'demo-3',
+      name: 'Trigger.dev',
+      tagline: '开源 TypeScript 后台任务框架',
+      category: '开发者工具',
+      source: 'github',
+      url: 'https://trigger.dev',
+      metrics: '5.8K Stars, YC W23, 种子轮 $3M',
+      score: 85,
+      verdict: 'STRONG_MATCH',
+      one_liner: '后台任务是 $2B+ 市场 — 这个团队的开发体验最好',
+      strengths: ['YC 背书', 'TypeScript 生态先发优势', '极致开发体验'],
+      risks: ['Inngest 资金充裕是强竞争对手', '开源商业化风险'],
+      suggested_action: '在 Twitter 联系创始人 — 活跃且回复快',
+    },
+    {
+      id: 'demo-4',
+      name: 'Pika',
+      tagline: 'AI 视频生成平台',
+      category: 'AI/ML',
+      source: 'crunchbase',
+      url: 'https://pika.art',
+      metrics: 'B轮 $80M, 100万+ 用户',
+      score: 45,
+      verdict: 'PASS',
+      one_liner: '产品优秀但估值过高，不适合天使投资',
+      strengths: ['病毒式传播的消费产品', '顶级 AI 研究团队'],
+      risks: ['$6亿估值 — 非天使阶段', 'Runway/Sora 竞争激烈'],
+      suggested_action: '跳过 — 关注二级市场机会',
+    },
+    {
+      id: 'demo-5',
+      name: 'Dub.co',
+      tagline: '面向现代营销团队的开源链接管理工具',
+      category: 'SaaS',
+      source: 'product_hunt',
+      url: 'https://dub.co',
+      metrics: '12K Stars, $2M ARR, 自举转融资',
+      score: 71,
+      verdict: 'MODERATE_MATCH',
+      one_liner: '开源版 Bitly — 独立创始人执行力惊人',
+      strengths: ['融资前已有收入', '开源社区分发', '独立创始人高效执行'],
+      risks: ['短链接是同质化市场', 'Bitly 有企业客户锁定'],
+      suggested_action: '值得聊 30 分钟 — 创始人正在融种子轮',
+    },
+  ] : [
     {
       id: 'demo-1',
       name: 'Raycast',
@@ -237,14 +313,16 @@ function Dashboard() {
       risks: ['Link shortening is commodity', 'Bitly has enterprise lock-in'],
       suggested_action: 'Worth a 30-min call — founder is raising seed now',
     },
-  ], []);
+  ], [locale]);
 
   const demoBrief: Brief = useMemo(() => ({
-    content: `## Daily Deal Brief — Demo\n\nToday's scan found **5 projects** matching your thesis across Developer Tools, AI/ML, and SaaS.\n\n### 🔥 Top Picks\n\n**Raycast** (Score: 92) — Blazingly fast macOS launcher with 50K+ DAU. The extensible platform play creates a developer ecosystem moat. Round closing soon.\n\n**Trigger.dev** (Score: 85) — YC W23 background jobs framework. TypeScript-first positioning in a $2B+ market with best-in-class DX.\n\n### 👀 Worth Watching\n\n**Unkey** (Score: 78) — Open-source API key management gaining traction (3.2K stars, 40% MoM). Monitor star velocity.\n\n**Dub.co** (Score: 71) — Bootstrapped to $2M ARR, now raising seed. Impressive solo founder execution.\n\n### ⏭️ Passed\n\n**Pika** (Score: 45) — Great product but $600M valuation is beyond angel range.\n\n---\n*This is demo data. Configure your DeepSeek API key to get real results from live sources.*`,
+    content: locale === 'zh'
+      ? `## 今日发现 — 演示数据\n\n今日扫描发现 **5 个项目**匹配你的投资偏好，覆盖开发者工具、AI/ML 和 SaaS 赛道。\n\n### 🔥 重点推荐\n\n**Raycast**（评分: 92）— 极速 macOS 启动器，5万+ 日活。可扩展平台生态构建开发者护城河，本轮即将关闭。\n\n**Trigger.dev**（评分: 85）— YC W23 后台任务框架。TypeScript 生态先发优势，$2B+ 市场中开发体验最佳。\n\n### 👀 值得关注\n\n**Unkey**（评分: 78）— 开源 API 密钥管理，增长强劲（3.2K Stars，月增 40%）。继续观察 Star 增速。\n\n**Dub.co**（评分: 71）— 自举到 $2M ARR，正在融种子轮。独立创始人执行力惊人。\n\n### ⏭️ 已跳过\n\n**Pika**（评分: 45）— 产品优秀但 $6亿估值超出天使投资范围。\n\n---\n*这是演示数据。配置 DeepSeek API 密钥后可获取真实项目数据。*`
+      : `## Daily Deal Brief — Demo\n\nToday's scan found **5 projects** matching your thesis across Developer Tools, AI/ML, and SaaS.\n\n### 🔥 Top Picks\n\n**Raycast** (Score: 92) — Blazingly fast macOS launcher with 50K+ DAU. The extensible platform play creates a developer ecosystem moat. Round closing soon.\n\n**Trigger.dev** (Score: 85) — YC W23 background jobs framework. TypeScript-first positioning in a $2B+ market with best-in-class DX.\n\n### 👀 Worth Watching\n\n**Unkey** (Score: 78) — Open-source API key management gaining traction (3.2K stars, 40% MoM). Monitor star velocity.\n\n**Dub.co** (Score: 71) — Bootstrapped to $2M ARR, now raising seed. Impressive solo founder execution.\n\n### ⏭️ Passed\n\n**Pika** (Score: 45) — Great product but $600M valuation is beyond angel range.\n\n---\n*This is demo data. Configure your DeepSeek API key to get real results from live sources.*`,
     dealCount: 5,
     topScore: 92,
     generatedAt: new Date().toISOString(),
-  }), []);
+  }), [locale]);
 
   // Use demo data when no real data available
   const effectiveDeals = isDemo ? demoDeals : deals;
@@ -265,20 +343,20 @@ function Dashboard() {
     try {
       const dealsRes = await fetch('/api/deals', { method: 'POST' });
       const dealsData = await dealsRes.json();
-      if (!dealsData.success) throw new Error(dealsData.error || 'Scan failed');
+      if (!dealsData.success) throw new Error(dealsData.error || '扫描失败');
 
       setScanStatus(t('scanScoredMsg', { count: dealsData.total }));
 
       const briefRes = await fetch('/api/brief', { method: 'POST' });
       const briefData = await briefRes.json();
-      if (!briefData.success) throw new Error(briefData.error || 'Brief generation failed');
+      if (!briefData.success) throw new Error(briefData.error || '简报生成失败');
 
       setScanStatus('');
       await fetchData();
       setActiveTab('brief');
       track('scan_completed', { dealCount: dealsData.total });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Unknown error';
+      const msg = e instanceof Error ? e.message : '未知错误';
       setScanError(msg);
       setScanStatus('');
     }
@@ -500,7 +578,7 @@ function Dashboard() {
                           }`}
                         >
                           <span>{new Date(b.generatedAt).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric', weekday: 'short' })}</span>
-                          <span className="text-xs text-gray-400">{b.dealCount} projects · Top {b.topScore}</span>
+                          <span className="text-xs text-gray-400">{b.dealCount} {t('projects')} · {t('top')} {b.topScore}</span>
                         </button>
                       ))}
                     </div>
