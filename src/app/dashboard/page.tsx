@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { DealCard } from '@/components/DealCard';
 import { BriefSection } from '@/components/BriefSection';
 import { FilterBar } from '@/components/FilterBar';
-// OnboardingStepper removed — we now always show content (demo or real)
 import { PreferencesForm } from '@/components/PreferencesForm';
 import { ApiConfigForm } from '@/components/ApiConfigForm';
 import { SkeletonCard, SkeletonBrief } from '@/components/Skeleton';
@@ -119,6 +118,15 @@ function Dashboard() {
   // History brief selector
   const [showHistory, setShowHistory] = useState(false);
 
+  // Coach mark for first-time visitors
+  const [showCoachMark, setShowCoachMark] = useState(false);
+
+  // Feedback toast
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
+
+  // Demo scan modal
+  const [showDemoScanModal, setShowDemoScanModal] = useState(false);
+
   // ============ Data Fetching (with error isolation) ============
   const fetchData = useCallback(async () => {
     const results = await Promise.allSettled([
@@ -152,6 +160,11 @@ function Dashboard() {
     }
 
     setInitialLoading(false);
+
+    // Show coach mark for first-time visitors
+    if (typeof window !== 'undefined' && !localStorage.getItem('dealflow-coach-seen')) {
+      setShowCoachMark(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -331,6 +344,10 @@ function Dashboard() {
   // ============ Actions ============
   async function runScan() {
     if (!apiConfig?.deepseekConfigured) {
+      if (isDemo) {
+        setShowDemoScanModal(true);
+        return;
+      }
       setScanError(t('configureApiFirst'));
       setActiveTab('api');
       return;
@@ -367,6 +384,18 @@ function Dashboard() {
     const prev = feedbackMap[dealId] || null;
     // Optimistic update
     setFeedbackMap(m => ({ ...m, [dealId]: signal }));
+
+    // Show feedback toast
+    if (signal) {
+      const toastMsg = signal === 'interested'
+        ? (locale === 'zh' ? 'AI 已记录偏好，未来推荐将更精准' : 'Preference noted — future picks will improve')
+        : (locale === 'zh' ? '已标记跳过，同类项目将降权' : 'Marked as pass — similar deals will be deprioritized');
+      setFeedbackToast(toastMsg);
+      setTimeout(() => setFeedbackToast(null), 3000);
+    }
+
+    if (isDemo) return; // Demo mode: no API call
+
     try {
       const res = await fetch('/api/feedback', {
         method: 'POST',
@@ -442,6 +471,14 @@ function Dashboard() {
   }, [effectiveDeals, verdictFilter, sourceFilter, categoryFilter, sortBy]);
 
   const dealNames = useMemo(() => effectiveDeals.map(d => d.name), [effectiveDeals]);
+
+  // Dismiss coach mark
+  function dismissCoachMark() {
+    setShowCoachMark(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dealflow-coach-seen', '1');
+    }
+  }
 
   // ============ Render ============
   return (
@@ -686,6 +723,84 @@ function Dashboard() {
           />
         )}
       </main>
+
+      {/* Coach Mark Overlay */}
+      {showCoachMark && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={dismissCoachMark}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 sm:p-8 relative" onClick={e => e.stopPropagation()}>
+            <button onClick={dismissCoachMark} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <div className="text-3xl mb-3">{'\uD83D\uDC4B'}</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {locale === 'zh' ? '欢迎来到 DealFlow' : 'Welcome to DealFlow'}
+            </h3>
+            <div className="space-y-3 text-sm text-gray-600">
+              <p>{locale === 'zh'
+                ? '这是你的 AI 投资助手仪表盘。以下是快速上手指南：'
+                : 'This is your AI deal scout dashboard. Here is a quick guide:'}</p>
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-500 font-bold">1.</span>
+                <span>{locale === 'zh' ? '点击右上角「每日扫描」发现新项目' : 'Click "Daily Scan" to discover new deals'}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-500 font-bold">2.</span>
+                <span>{locale === 'zh' ? '在「简报」标签查看 AI 生成的投资摘要' : 'Check the "Brief" tab for AI-generated summaries'}</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-500 font-bold">3.</span>
+                <span>{locale === 'zh' ? '对项目点赞/跳过，AI 会学习你的偏好' : 'Like/pass on deals — AI learns your taste'}</span>
+              </div>
+            </div>
+            <button
+              onClick={dismissCoachMark}
+              className="mt-6 w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+            >
+              {locale === 'zh' ? '知道了，开始探索' : 'Got it, let me explore'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Toast */}
+      {feedbackToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-[slideUp_0.3s_ease-out]">
+          <div className="bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm flex items-center gap-2">
+            <span>{'\u2728'}</span>
+            <span>{feedbackToast}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Demo Scan Modal */}
+      {showDemoScanModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={() => setShowDemoScanModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 sm:p-8 relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowDemoScanModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            <div className="text-3xl mb-3">{'\uD83D\uDD12'}</div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              {locale === 'zh' ? '需要配置 API 密钥' : 'API Key Required'}
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              {locale === 'zh'
+                ? '实时扫描需要 DeepSeek API 密钥。你现在看到的是演示数据，配置后即可获取真实项目。'
+                : 'Live scanning requires a DeepSeek API key. You are viewing demo data — configure to get real deals.'}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDemoScanModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                {locale === 'zh' ? '继续体验' : 'Keep exploring'}
+              </button>
+              <button
+                onClick={() => { setShowDemoScanModal(false); setActiveTab('api'); }}
+                className="flex-1 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+              >
+                {locale === 'zh' ? '去配置' : 'Configure'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
